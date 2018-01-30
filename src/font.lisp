@@ -187,9 +187,9 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
     ((eq op :moveto)
      (progn
        (setf (contour *ft-context*) (add-contour (shape *ft-context*)))
-       (setf (pos *ft-context*)
-	     (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-       (format t "[lineto] ft-context pos: ~a~%" (pos *ft-context*))))
+       (let ((point1 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p))))
+	 (format t "[moveto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) point1)
+	 (setf (pos *ft-context*) point1))))
     ((eq op :lineto)
      (progn
        (let ((point1 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
@@ -197,7 +197,7 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 	     (edge (make-instance 'linear-segment)))
 	 (setf (aref (points edge) 0) (pos *ft-context*))
 	 (setf (aref (points edge) 1) point1)
-	 (format t "[lineto] ft-context pos: ~a, point1: ~a)~%" (pos *ft-context*) point1)
+	 (format t "[lineto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) point1)
 	 (vector-push-extend edge (edges (contour *ft-context*)))
 	 (setf (pos *ft-context*) point2))))
     ((eq op :conicto)
