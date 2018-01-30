@@ -203,7 +203,7 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
     ((eq op :conicto)
      (progn
        (let ((control (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-	     (to (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p2)))
+	     (to (make-ft-vec2 (freetype2-types:ft-vector-x p2) (freetype2-types:ft-vector-y p2)))
 	     (edge (make-instance 'quadratic-segment)))
 	 (setf (aref (points edge) 0) (pos *ft-context*))
 	 (setf (aref (points edge) 1) control)
