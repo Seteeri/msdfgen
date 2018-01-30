@@ -193,19 +193,27 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
     ((eq op :lineto)
      (progn
        (let ((point1 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-	     (point2 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
+	     (point11 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
 	     (edge (make-instance 'linear-segment)))
 	 (setf (aref (points edge) 0) (pos *ft-context*))
 	 (setf (aref (points edge) 1) point1)
 	 (format t "[lineto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) point1)
 	 (vector-push-extend edge (edges (contour *ft-context*)))
-	 (setf (pos *ft-context*) point2))))
+	 (setf (pos *ft-context*) point11))))
     ((eq op :conicto)
      (progn
-       (format t "TODO: conicto~%")))
+       (let ((control (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
+	     (to (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p2)))
+	     (edge (make-instance 'quadratic-segment)))
+	 (setf (aref (points edge) 0) (pos *ft-context*))
+	 (setf (aref (points edge) 1) control)
+	 (setf (aref (points edge) 2) to)
+	 (format t "[conicto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) to)
+	 (vector-push-extend edge (edges (contour *ft-context*)))
+	 (setf (pos *ft-context*) to))))
     ((eq op :cubeto)
      (progn
-       (format t "TODO: cubeto~%")))))
+       (error "TODO: cubeto~%")))))
 
 
 ;; /// Returns the middle out of three values
