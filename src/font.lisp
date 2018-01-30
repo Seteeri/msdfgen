@@ -28,38 +28,38 @@
 
 (defun write-rgb-buffer-to-ppm-file (filename bitmap width height)
   (with-open-file (stream filename 
-              :element-type '(unsigned-byte 8)
-              :direction :output 
-              :if-does-not-exist :create
-              :if-exists :supersede)
+			  :element-type '(unsigned-byte 8)
+			  :direction :output 
+			  :if-does-not-exist :create
+			  :if-exists :supersede)
     (let* ((header (format nil "P6~A~D ~D~A255~A" 
-               #\newline
-               width height #\newline
-               #\newline)))
+			   #\newline
+			   width height #\newline
+			   #\newline)))
       
       (loop 
-     :for char :across header 
-     :do (write-byte (char-code char) stream)) #| Assumes char-codes match ASCII |#
+	 :for char :across header 
+	 :do (write-byte (char-code char) stream)) #| Assumes char-codes match ASCII |#
 
       (iter (for y from (- height 1) downto 0) ; height-1
-        (iter (for x from 0 below width) ; width
-          (let* ((px (get-pixel bitmap x y width)))
-            (write-byte (clamp (truncate (* (aref px 0) #x100)) 0 #xff) stream)
-            (write-byte (clamp (truncate (* (aref px 1) #x100)) 0 #xff) stream)
-            (write-byte (clamp (truncate (* (aref px 2) #x100)) 0 #xff) stream)))))))
-      
-      ;; (loop 
-      ;;     :for x :upfrom 0 :below width
-      ;;     :do (loop :for y :upfrom 0 :below height 
-      ;;        :do (let* ((pixel (get-pixel buffer x y width))
-      ;;               (red (aref pixel 0))
-      ;;               (green (aref pixel 1))
-      ;;               (blue (aref pixel 2)))
-      ;;            (write-byte red stream)
-      ;;            (write-byte green stream)
-      ;;            (write-byte blue stream))))))
+	    (iter (for x from 0 below width) ; width
+		  (let* ((px (get-pixel bitmap x y width)))
+		    (write-byte (clamp (truncate (* (aref px 0) #x100)) 0 #xff) stream)
+		    (write-byte (clamp (truncate (* (aref px 1) #x100)) 0 #xff) stream)
+		    (write-byte (clamp (truncate (* (aref px 2) #x100)) 0 #xff) stream)))))))
 
-(defun test-font ()
+;; (loop 
+;;     :for x :upfrom 0 :below width
+;;     :do (loop :for y :upfrom 0 :below height 
+;;        :do (let* ((pixel (get-pixel buffer x y width))
+;;               (red (aref pixel 0))
+;;               (green (aref pixel 1))
+;;               (blue (aref pixel 2)))
+;;            (write-byte red stream)
+;;            (write-byte green stream)
+;;            (write-byte blue stream))))))
+
+(defun main ()
   ;; Shape shape;
   ;; if (loadGlyph(shape, font, 'A')) {
   ;;   shape.normalize();
@@ -77,7 +77,7 @@
 
     ;; (format t "~a~%" (freetype2:check-font-file "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf"))
     
-    (let ((shape (load-glyph face #\A)))
+    (let ((shape (load-glyph face #\a)))
       
       (normalize (contours shape))
       
@@ -86,37 +86,43 @@
       ;; bitmap... (msdf 32 32)
       ;; each pixel contains RGB floats
       (let ((bitmap (make-array (* 32 32) :fill-pointer 0)))
-    (iter (for i from 0 below (* 32 32))
-          (vector-push (make-array 3 :fill-pointer 0)
-               bitmap))
-    
-    (generate-msdf bitmap
-               shape
-               4.0 ; range
-               (vec2 1.0 1.0) ; scale
-               (vec2 4.0 4.0)) ; translation
+	(iter (for i from 0 below (* 32 32))
+	      (vector-push (make-array 3 :fill-pointer 0)
+			   bitmap))
+	
+	(generate-msdf bitmap
+		       shape
+		       4.0 ; range
+		       (vec2 1.0 1.0) ; scale
+		       (vec2 4.0 4.0)) ; translation
 
-    ; 8,14
-    ;; (sb-ext:exit)
-    
-    (when t
-      (iter (for y from 31 downto 0) ; height-1
-        (iter (for x from 0 below 32) ; width
-              (let ((px (get-pixel bitmap x y 32)))
-            (format t "(~a, ~a): ~5$, ~5$, ~5$ ~%" x y (aref px 0) (aref px 1) (aref px 2))))))
-    
-    ;; (when nil
-    ;;   (iter (for y from 31 downto 0) ; height-1
-    ;;  (iter (for x from 0 below 32) ; width
-    ;;        (let* ((px (get-pixel bitmap x y 32)))
-    ;;      (setf (aref px 0) (clamp (truncate (* (aref px 0) #x100)) 0 #xff))
-    ;;      (setf (aref px 1) (clamp (truncate (* (aref px 1) #x100)) 0 #xff))
-    ;;      (setf (aref px 2) (clamp (truncate (* (aref px 2) #x100)) 0 #xff))
-    ;;      (format t "(~a, ~a): ~a, ~a, ~a ~%" x y (aref px 0) (aref px 1) (aref px 2))))))
+					; 8,14
+	;; (sb-ext:exit)
 
-    ;; (sb-ext:exit)
-    
-    (write-rgb-buffer-to-ppm-file "/home/user/output.ppm" bitmap 32 32))))
+	;; Write output
+	(when nil
+	  (with-open-file (out #p"output.txt"
+			       :direction :output
+			       :if-does-not-exist :create
+			       :if-exists :supersede)
+	    (iter (for y from 31 downto 0) ; height-1
+		  (iter (for x from 0 below 32) ; width
+			(let ((px (get-pixel bitmap x y 32)))
+			  (write-line (format nil "(~a, ~a) ~5$ ~5$ ~5$" x y (aref px 0) (aref px 1) (aref px 2))
+				      out))))))
+	
+	;; (when nil
+	;;   (iter (for y from 31 downto 0) ; height-1
+	;;  (iter (for x from 0 below 32) ; width
+	;;        (let* ((px (get-pixel bitmap x y 32)))
+	;;      (setf (aref px 0) (clamp (truncate (* (aref px 0) #x100)) 0 #xff))
+	;;      (setf (aref px 1) (clamp (truncate (* (aref px 1) #x100)) 0 #xff))
+	;;      (setf (aref px 2) (clamp (truncate (* (aref px 2) #x100)) 0 #xff))
+	;;      (format t "(~a, ~a): ~a, ~a, ~a ~%" x y (aref px 0) (aref px 1) (aref px 2))))))
+
+	;; (sb-ext:exit)
+	
+	(write-rgb-buffer-to-ppm-file "/home/user/output.ppm" bitmap 32 32))))
   
   (format t "DONE~%")
   (sb-ext:exit))
@@ -129,19 +135,19 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
   (if (< number min)
       min
       (if (> number max)
-      max
-      number)))
-      
+	  max
+	  number)))
+
 
 (defun load-glyph (face unicode)
   
   (freetype2:load-char face
-               unicode
-               1) ; FT_LOAD_NO_SCALE
+		       unicode
+		       1) ; FT_LOAD_NO_SCALE
   ;; check chr
 
   (let* ((output (make-instance 'shape))
-     (context (make-instance 'ft-context :shape output)))
+	 (context (make-instance 'ft-context :shape output)))
     
     ;; return advance if requested
     ;; font->face->glyph->advance.x/64
@@ -159,16 +165,16 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
     ;;        (,outline (ft-outlineglyph-outline ,outline-glyph)))
     
     (let* ((glyph (freetype2:get-glyph face))
-       (outline (freetype2-types:ft-outlineglyph-outline glyph)))
+	   (outline (freetype2-types:ft-outlineglyph-outline glyph)))
       
-      (format t "glyph: ~a, outline: ~a~%" glyph outline)
+      ;; (format t "glyph: ~a, outline: ~a~%" glyph outline)
       
       ;; callbacks need access to context
       ;; instead of pointer use a global name
-      (format t "Call do-outline-decompose~%")
+      ;; (format t "Call do-outline-decompose~%")
       (freetype2:do-outline-decompose outline
-    (op p p2 p3)
-    (handle-outline-decompose op p p2 p3)))
+	(op p p2 p3)
+	(handle-outline-decompose op p p2 p3)))
 
     output))
 
@@ -182,18 +188,18 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
      (progn
        (setf (contour *ft-context*) (add-contour (shape *ft-context*)))
        (setf (pos *ft-context*)
-         (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))))
+	     (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
+       (format t "[lineto] ft-context pos: ~a~%" (pos *ft-context*))))
     ((eq op :lineto)
      (progn
        (let ((point1 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-         (point2 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-         (edge (make-instance 'linear-segment)))
-     (setf (aref (points edge) 0) (pos *ft-context*))
-     (setf (aref (points edge) 1) point1)
-     (format t "[lineto] ~a, ~a)~%" (pos *ft-context*) point1)
-     (vector-push-extend edge (edges (contour *ft-context*)))
-     ;; (format t "  [lineto] ~a, ~a~%" point1 point2)
-     (setf (pos *ft-context*) point2))))
+	     (point2 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
+	     (edge (make-instance 'linear-segment)))
+	 (setf (aref (points edge) 0) (pos *ft-context*))
+	 (setf (aref (points edge) 1) point1)
+	 (format t "[lineto] ft-context pos: ~a, point1: ~a)~%" (pos *ft-context*) point1)
+	 (vector-push-extend edge (edges (contour *ft-context*)))
+	 (setf (pos *ft-context*) point2))))
     ((eq op :conicto)
      (progn
        (format t "TODO: conicto~%")))
@@ -212,7 +218,7 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 (defun median (a b c)
   (max (min a b)
        (min (max a b) c)))
-       
+
 
 ;; bool Vector2::operator!() const {
 ;;     return !x && !y;
@@ -227,18 +233,18 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 ;; }
 (defun dot-product (a b)
   (+ (* (vx2 a)
-    (vx2 b))
+	(vx2 b))
      (* (vy2 a)
-    (vy2 b))))
+	(vy2 b))))
 
 ;; double crossProduct(const Vector2 &a, const Vector2 &b) {
 ;;     return a.x*b.y-a.y*b.x;
 ;; }
 (defun cross-product (a b)
   (- (* (vx2 a)
-    (vy2 b))
+	(vy2 b))
      (* (vy2 a)
-    (vx2 b))))
+	(vx2 b))))
 
 ;; Vector2 getOrthonormal(bool polarity = true, bool allowZero = false) const;
 ;; Vector2 Vector2::getOrthonormal(bool polarity, bool allowZero) const {
@@ -251,12 +257,12 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
   (let ((len (vlength point)))
     (when (= len 0)
       (return-from get-orthonormal (if polarity
-                       (vec2 0 (if (not allow-zero) 1 0))
-                       (vec2 0 (if (not allow zero) -1 0)))))
+				       (vec2 0 (if (not allow-zero) 1 0))
+				       (vec2 0 (if (not allow zero) -1 0)))))
     (return-from get-orthonormal (if polarity
-                     (vec2 (/ (- (vy2 point)) len) (/ (vx2 point) len))
-                     (vec2 (/ (vy2 point) len) (/ (- (vx2 point)) len))))))
-  
+				     (vec2 (/ (- (vy2 point)) len) (/ (vx2 point) len))
+				     (vec2 (/ (vy2 point) len) (/ (- (vx2 point)) len))))))
+
 ;; /// Returns 1 for non-negative values and -1 for negative values.
 ;; template <typename T>
 ;; inline int nonZeroSign(T n) {
@@ -264,21 +270,21 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 ;; }
 (defun non-zero-sign (n)
   (- (* 2 (if (> n 0) 1 0)) 1))
-    
+
 
 (defun mix (a b weight)
   (+ (* (- 1 weight)
-    a)
+	a)
      (* weight
-    b)))
+	b)))
 
 (defun mix-point (a b weight)
   ;; scale vector then add
   (let ((as (- 1 weight)))
     (vec2 (+ (* as (vx2 a))
-         (* weight (vx2 b)))
-      (+ (* as (vy2 a))
-         (* weight (vy2 b))))))
+	     (* weight (vx2 b)))
+	  (+ (* as (vy2 a))
+	     (* weight (vy2 b))))))
 
 ;; (make-array 2
 ;;      :initial-contents
@@ -296,9 +302,9 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 (defun point-bounds (point left bottom right top)
   ;; (format t "      [point-bounds] ~a, ~a, ~a, ~a, ~a~%" point left bottom right top)
   (values (if (< (vx2 point) left) (vx2 point) left)
-      (if (< (vy2 point) bottom) (vy2 point) bottom)
-      (if (> (vx2 point) right) (vx2 point) right)
-      (if (> (vy2 point) top) (vy2 point) top)))
+	  (if (< (vy2 point) bottom) (vy2 point) bottom)
+	  (if (> (vx2 point) right) (vx2 point) right)
+	  (if (> (vy2 point) top) (vy2 point) top)))
 
 
 ;; int solveQuadratic(double x[2], double a, double b, double c) {
@@ -328,22 +334,22 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
   (when (< (abs a) 1E-14)
     (when (< (abs b) 1E-14)
       (when (= c 0)
-    (return-from solve-quadratic -1))
+	(return-from solve-quadratic -1))
       (return-from solve-quadratic 0))
     (setf (aref x 0) (/ (- c) b))
     (return-from solve-quadratic 1))
   (let ((dscr (- (* b b)
-         (* 4 a c))))
+		 (* 4 a c))))
     (cond ((> dscr 0)
-       (setf dscr (sqrt dscr))
-       (setf (aref x 0) (/ (+ (- b) dscr) (* 2 a)))
-       (setf (aref x 1) (/ (- (- b) dscr) (* 2 a)))
-       (return-from solve-quadratic 2))
-      ((= dscr 0)
-       (setf (aref x 0) (/ (- b) (* 2 a)))
-       (return-from solve-quadratic 1))
-      (t
-       (return-from solve-quadratic 0)))))
+	   (setf dscr (sqrt dscr))
+	   (setf (aref x 0) (/ (+ (- b) dscr) (* 2 a)))
+	   (setf (aref x 1) (/ (- (- b) dscr) (* 2 a)))
+	   (return-from solve-quadratic 2))
+	  ((= dscr 0)
+	   (setf (aref x 0) (/ (- b) (* 2 a)))
+	   (return-from solve-quadratic 1))
+	  (t
+	   (return-from solve-quadratic 0)))))
 
 
 ;; int solveCubicNormed(double *x, double a, double b, double c) {
@@ -379,30 +385,30 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 (defun solve-cubic-normed (x a b c)
   (error "TODO: solve-cubic-normed")
   (let* ((a2 (* a a))
-     (q (/ (- a2 (* 3 b)) 9))
-     (r (/ (+ (* a (- (* 2 a2) (* 9 b))) (* 27 c)) 54))
-     (r2 (* r r))
-     (q3 (* q q q)))
+	 (q (/ (- a2 (* 3 b)) 9))
+	 (r (/ (+ (* a (- (* 2 a2) (* 9 b))) (* 27 c)) 54))
+	 (r2 (* r r))
+	 (q3 (* q q q)))
     (if (< r2 q3)
-      (let ((tt (/ r (sqrt q3))))
-    (when (< tt -1) (setf tt -1))
-    (when (> tt 1) (setf tt 1))
-    (setf tt (acos tt))
-    (setf a (/ a 3))
-    (setf q (* -2 (sqrt q)))
-    (values (- (* q (cos (/ tt 3))) a)
-        (- (* q (cos (/ (+ tt (* 2 PI)) 3))) a)
-        (- (* q (cos (/ (- tt (* 2 PI)) 3))) a)
-        3))
-      (let ((aa (- (expt (+ (abs r) (sqrt (- r2 q3))) (/ 1 3))))
-        (bb 0))
-    (when (< r 0) (setf aa (- aa)))
-    (setf bb (if (= aa 0) 0 (/ q aa)))
-    (setf aa (/ aa 3))
-    (values (- (+ aa bb) a)
-        (- (* (- 0.5) (sqrt 3.0)) aa)
-        (* 0.5 (sqrt 3.0) (- aa bb))
-        (if (< (abs (aref x 2)) 1E-14) 2 1))))))
+	(let ((tt (/ r (sqrt q3))))
+	  (when (< tt -1) (setf tt -1))
+	  (when (> tt 1) (setf tt 1))
+	  (setf tt (acos tt))
+	  (setf a (/ a 3))
+	  (setf q (* -2 (sqrt q)))
+	  (values (- (* q (cos (/ tt 3))) a)
+		  (- (* q (cos (/ (+ tt (* 2 PI)) 3))) a)
+		  (- (* q (cos (/ (- tt (* 2 PI)) 3))) a)
+		  3))
+	(let ((aa (- (expt (+ (abs r) (sqrt (- r2 q3))) (/ 1 3))))
+	      (bb 0))
+	  (when (< r 0) (setf aa (- aa)))
+	  (setf bb (if (= aa 0) 0 (/ q aa)))
+	  (setf aa (/ aa 3))
+	  (values (- (+ aa bb) a)
+		  (- (* (- 0.5) (sqrt 3.0)) aa)
+		  (* 0.5 (sqrt 3.0) (- aa bb))
+		  (if (< (abs (aref x 2)) 1E-14) 2 1))))))
 
 ;; int solveCubic(double x[3], double a, double b, double c, double d) {
 ;;     if (fabs(a) < 1e-14)

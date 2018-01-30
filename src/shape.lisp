@@ -73,7 +73,7 @@
               (when (is-corner (vunit prev-direction)
                        (vunit (direction edge 0))
                        cross-threshold)
-            ;; (format t "[edge-coloring-simple] push: ~a~%" index)
+            (format t "[edge-coloring-simple] vector-push-extend: ~a~%" index)
             (vector-push-extend index corners))
               (setf prev-direction (direction edge 1))
               (incf index))))

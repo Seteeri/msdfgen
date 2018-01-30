@@ -9,12 +9,12 @@
 
 (defun normalize (contours)
 
-  (format t "[normalize] contours: ~a~%" contours)
+  ;; (format t "[normalize] contours: ~a~%" contours)
   
   (iter (for contour in-vector contours)
         (for edges = (edges contour))
 
-        (format t "[normalize,iter]: ~a, ~a~%" contour edges)
+        ;; (format t "[normalize,iter]: ~a, ~a~%" contour edges)
         
         (iter (for edge in-vector edges)
               (when (is-degenerate edge)
