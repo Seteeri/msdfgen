@@ -211,9 +211,19 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 	 (format t "[conicto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) to)
 	 (vector-push-extend edge (edges (contour *ft-context*)))
 	 (setf (pos *ft-context*) to))))
-    ((eq op :cubeto)
+    ((eq op :cubicto)
      (progn
-       (error "TODO: cubeto~%")))))
+       (let ((control-1 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
+	     (control-2 (make-ft-vec2 (freetype2-types:ft-vector-x p2) (freetype2-types:ft-vector-y p2)))
+	     (to (make-ft-vec2 (freetype2-types:ft-vector-x p3) (freetype2-types:ft-vector-y p3)))
+	     (edge (make-instance 'quadratic-segment)))
+	 (setf (aref (points edge) 0) (pos *ft-context*))
+	 (setf (aref (points edge) 1) control)
+	 (setf (aref (points edge) 2) control)
+	 (setf (aref (points edge) 3) to)
+	 (format t "[cubicto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) to)
+	 (vector-push-extend edge (edges (contour *ft-context*)))
+	 (setf (pos *ft-context*) to))))))
 
 
 ;; /// Returns the middle out of three values
