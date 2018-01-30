@@ -4,7 +4,7 @@
   ((pos
     :accessor pos
     :initarg :pos
-    :initform nil
+    :initform (vec2 0.0 0.0)
     :documentation "Point2")
    (shape
     :accessor shape
