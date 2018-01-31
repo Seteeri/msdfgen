@@ -164,27 +164,50 @@
 ;;     double d = dotProduct(qa, ab);
 ;;     double t[3];
 ;;     int solutions = solveCubic(t, a, b, c, d);
+(defmethod signed-distance ((edge quadratic-segment) origin param)
+  (let* ((points (points edge))
+	 (qa (v- (aref points 0) origin))
+	 (ab (v- (aref points 1) (aref points 0)))
+	 (br (v- (v+ (aref points 0) (aref points 2)) (aref points 1) (aref points 1)))
+	 (a (dot-product br br))
+	 (b (* 3 (dot-product ab br)))
+	 (c (* 2 (dot-product qa ab)))
+	 (d (dot-product qa ab))
+	 (solutions (solve-cubic t a b c d))
+	 (min-distance (* (non-zero-sign (cross-product ab qa)) (vlength qa))))
 
-;;     double minDistance = nonZeroSign(crossProduct(ab, qa))*qa.length(); // distance from A
-;;     param = -dotProduct(qa, ab)/dotProduct(ab, ab);
-;;     {
-;;         double distance = nonZeroSign(crossProduct(p[2]-p[1], p[2]-origin))*(p[2]-origin).length(); // distance from B
-;;         if (fabs(distance) < fabs(minDistance)) {
-;;             minDistance = distance;
-;;             param = dotProduct(origin-p[1], p[2]-p[1])/dotProduct(p[2]-p[1], p[2]-p[1]);
-;;         }
-;;     }
-;;     for (int i = 0; i < solutions; ++i) {
-;;         if (t[i] > 0 && t[i] < 1) {
-;;             Point2 endpoint = p[0]+2*t[i]*ab+t[i]*t[i]*br;
-;;             double distance = nonZeroSign(crossProduct(p[2]-p[0], endpoint-origin))*(endpoint-origin).length();
-;;             if (fabs(distance) <= fabs(minDistance)) {
-;;                 minDistance = distance;
-;;                 param = t[i];
-;;             }
-;;         }
-;;     }
+    (setf param (- (/ (dot-product qa ab) (dot-product ab ab))))
 
+    (let ((distance (* (non-zero-sign (cross-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) origin)))
+		       (vlength (v- (aref points 2) origin)))))
+      (when (< (abs distance) (abs min-distance))
+	(setf min-distance distance)
+	(setf param (/ (dot-product (v- origin (aref points 1)) (v- (aref points 2) (aref points 1)))
+		       (dot-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) (aref points 1)))))))
+
+    (let ((e (make-array 3 :initial-contents '(0.0 0.0 0.0))))
+      (iter (for i from 0 below solutions)
+	    (when (and (> (aref e i) 0)
+		       (< (aref e i) 1))
+	      (let* ((endpoint (v+ (aref points 0) (v* 2 (aref e i) ab) (v* (aref e i) (aref e i) br)))
+		     (distance (* (non-zero-sign (cross-product (v- (aref points 2) (aref points 0)) (v- endpoint origin)))
+				  (vlength (v- endpoint origin)))))
+		(when (<= (abs distance) (abs min-distance))
+		  (setf min-distance distance)
+		  (setf param (aref e i)))))))
+
+    (when (and (>= param 0) (<= param 1))
+      (return-from signed-distance (make-instance 'signed-distance
+						  :distance min-distance
+						  :dot 0)))
+    (if (< param 0.5)
+	(return-from signed-distance (make-instance 'signed-distance
+						    :distance min-distance
+						    :dot (abs (dot-product (vunit ab) (vunit qa)))))
+	(return-from signed-distance (make-instance 'signed-distance
+						    :distance min-distance
+						    :dot (abs (dot-product (vunit (v- (aref points 2) (aref points 1)))
+									   (vunit (v- (aref points 2) origin)))))))))
 ;;     if (param >= 0 && param <= 1)
 ;;         return SignedDistance(minDistance, 0);
 ;;     if (param < .5)
