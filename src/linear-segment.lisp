@@ -71,7 +71,7 @@
 ;; int LinearSegment::crossings(const Point2 &r, CrossingCallback* cb) const {
 ;;     return crossLine(r, p[0], p[1], cb);
 ;; }
-(defmethod crossings2 ((edge linear-segment) r cb)
+(defmethod cross-points ((edge linear-segment) r cb)
   (let ((points (points edge)))
     (cross-line r (aref points 0) (aref points 1) cb)))
 

@@ -100,10 +100,10 @@
     
     (iter (for contour in-vector (contours shape))
       (iter (for edge in-vector (edges contour))
-        (crossings2 edge point (lambda (point winding)
-                     ;; (format t "[crossings-callback] ~a,~a~%" (vx2 point) winding)
-                     (vector-push-extend (list (vx2 point) winding)
-                                 (crossings ws))))))
+        (cross-points edge point (lambda (point winding)
+				   ;; (format t "[crossings-callback] ~a,~a~%" (vx2 point) winding)
+				   (vector-push-extend (list (vx2 point) winding)
+						       (crossings ws))))))
 
     (format t "[crossings] crossings size: ~a~%" (length (crossings ws)))
     

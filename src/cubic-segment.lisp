@@ -219,7 +219,7 @@
     ;; recursive
     (+ (cross-cubic r p0 c00 c01 mid depth cb) (cross-cubic r mid c10 c11 p1 depth cb))))
 
-(defmethod crossings2 ((edge cubic-segment) r cb)
+(defmethod cross-points ((edge cubic-segment) r cb)
   (let ((points (points edge)))
     (cross-cubic r (aref points 0) (aref points 1) (aref points 2) (aref points 3) 0 cb)))
 
