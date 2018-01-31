@@ -219,11 +219,9 @@
 ;;     return crossCubic(r, p0, c00, c01, mid, depth, cb) + crossCubic(r, mid, c10, c11, p1, depth, cb);
 ;; }
 
-
-;; int CubicSegment::crossings(const Point2 &r, CrossingCallback* cb) const {
-;;     return crossCubic(r, p[0], p[1], p[2], p[3], 0, cb);
-;; }
-
+(defmethod crossings2 ((edge cubic-segment) r cb)
+  (let ((points (points edge)))
+    (cross-cubic r (aref points 0) (aref points 1) (aref points 2) (aref points 3) 0 cb)))
 
 ;; SignedDistance CubicSegment::signedDistance(Point2 origin, double &param) const {
 ;;     Vector2 qa = p[0]-origin;
