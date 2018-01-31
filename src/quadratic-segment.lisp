@@ -185,7 +185,7 @@
 				  (vlength (v- endpoint origin)))))
 		(when (<= (abs distance) (abs min-distance))
 		  (setf min-distance distance)
-		  (setf param (aref e i)))))))
+		  (setf param x))))))
 
     (when (and (>= param 0) (<= param 1))
       (return-from signed-distance (values (make-instance 'signed-distance
