@@ -164,9 +164,8 @@
 	 (c (* 2 (dot-product qa ab)))
 	 (d (dot-product qa ab))
 	 (solutions (solve-cubic t a b c d))
-	 (min-distance (* (non-zero-sign (cross-product ab qa)) (vlength qa))))
-
-    (setf param (- (/ (dot-product qa ab) (dot-product ab ab))))
+	 (min-distance (* (non-zero-sign (cross-product ab qa)) (vlength qa)))
+	 (param (- (/ (dot-product qa ab) (dot-product ab ab)))))
 
     (let ((distance (* (non-zero-sign (cross-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) origin)))
 		       (vlength (v- (aref points 2) origin)))))
