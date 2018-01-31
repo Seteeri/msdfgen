@@ -26,23 +26,23 @@
   ;; EdgeSegment has p[*], color, point*()
   (with-slots (points color) edge
     (let ((p0 (aref points 0))
-      (p1 (aref points 1)))
+	  (p1 (aref points 1)))
       (values (make-instance 'linear-segment
-                 :points #(p0 (point edge (/ 1 3)))
-                 :color color)
-          (make-instance 'linear-segment
-                 :points #((point edge (/ 1 3))
-                       (point edge (/ 2 3)))
-                 :color color)
-          (make-instance 'linear-segment
-                 :points #((point edge (/ 2 3))
-                       p1)
-                 :color color)))))
+			     :points #(p0 (point edge (/ 1 3)))
+			     :color color)
+	      (make-instance 'linear-segment
+			     :points #((point edge (/ 1 3))
+				       (point edge (/ 2 3)))
+			     :color color)
+	      (make-instance 'linear-segment
+			     :points #((point edge (/ 2 3))
+				       p1)
+			     :color color)))))
 
 (defmethod point ((edge linear-segment) w)
   (let* ((points (points edge))
-     (p0 (aref points 0))
-     (p1 (aref points 1)))
+	 (p0 (aref points 0))
+	 (p1 (aref points 1)))
     ;; (format t "[point] ~a, ~a~%" p0 p1)
     (mix-point p0 p1 w)))
 
@@ -66,7 +66,7 @@
     ;; (format t "    [bounds:linear] iterating~%")
     (multiple-value-bind (l2 b2 r2 t2) (point-bounds (aref points 0) left bottom right top)
       (multiple-value-bind (l3 b3 r3 t3) (point-bounds (aref points 1) l2 b2 r2 t2)
-    (values l3 b3 r3 t3)))))
+	(values l3 b3 r3 t3)))))
 
 ;; int LinearSegment::crossings(const Point2 &r, CrossingCallback* cb) const {
 ;;     return crossLine(r, p[0], p[1], cb);
@@ -101,9 +101,9 @@
 (defun cross-line (r p0 p1 cb)
 
   (format t "[cross-line] ~a, ~a, ~a~%"
-      (< (vy2 r) (min (vy2 p0) (vy2 p1)))
-      (>= (vy2 r) (max (vy2 p0) (vy2 p1)))
-      (>= (vx2 r) (max (vx2 p0) (vx2 p1))))
+	  (< (vy2 r) (min (vy2 p0) (vy2 p1)))
+	  (>= (vy2 r) (max (vy2 p0) (vy2 p1)))
+	  (>= (vx2 r) (max (vx2 p0) (vx2 p1))))
   
   (when (< (vy2 r) (min (vy2 p0) (vy2 p1)))
     (return-from cross-line 0))
@@ -113,15 +113,15 @@
     (return-from cross-line 0))
   
   (let ((x-intercept (+ (vx2 p0)
-            (/ (* (- (vy2 r) (vy2 p0))
-                  (- (vx2 p1) (vx2 p0)))
-               (- (vy2 p1)
-                  (vy2 p0))))))
+			(/ (* (- (vy2 r) (vy2 p0))
+			      (- (vx2 p1) (vx2 p0)))
+			   (- (vy2 p1)
+			      (vy2 p0))))))
     (when (< (vx2 r) x-intercept)
       (let ((w (if (< (vy2 p0) (vy2 p1)) 1 -1)))
-    (when cb
-      (funcall cb (vec2 x-intercept (vy2 r)) w))
-    (return-from cross-line w))))
+	(when cb
+	  (funcall cb (vec2 x-intercept (vy2 r)) w))
+	(return-from cross-line w))))
   0)
 
 
