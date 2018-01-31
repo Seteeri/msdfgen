@@ -163,7 +163,6 @@
 	 (b (* 3 (dot-product ab br)))
 	 (c (* 2 (dot-product qa ab)))
 	 (d (dot-product qa ab))
-	 (solutions (solve-cubic t a b c d))
 	 (min-distance (* (non-zero-sign (cross-product ab qa)) (vlength qa)))
 	 (param (- (/ (dot-product qa ab) (dot-product ab ab)))))
 
@@ -173,12 +172,14 @@
 	(setf min-distance distance)
 	(setf param (/ (dot-product (v- origin (aref points 1)) (v- (aref points 2) (aref points 1)))
 		       (dot-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) (aref points 1)))))))
-
-    (let ((e (make-array 3 :initial-contents '(0.0 0.0 0.0))))
-      (iter (for i from 0 below solutions)
-	    (when (and (> (aref e i) 0)
-		       (< (aref e i) 1))
-	      (let* ((endpoint (v+ (aref points 0) (v* 2 (aref e i) ab) (v* (aref e i) (aref e i) br)))
+    
+    (multiple-value-bind (n solution) (solve-cubic a b c d)
+      ;; (iter (for i from 0 below n)
+      ;;       (for x = (nth i solution))
+      (iter (for x in solution)
+	    (when (and (> x 0)
+		       (< x 1))
+	      (let* ((endpoint (v+ (aref points 0) (v* ab (* 2 x)) (v* br (* x))))
 		     (distance (* (non-zero-sign (cross-product (v- (aref points 2) (aref points 0)) (v- endpoint origin)))
 				  (vlength (v- endpoint origin)))))
 		(when (<= (abs distance) (abs min-distance))
