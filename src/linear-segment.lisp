@@ -138,21 +138,21 @@
 ;;     }
 ;;     return SignedDistance(nonZeroSign(crossProduct(aq, ab))*endpointDistance, fabs(dotProduct(ab.normalize(), eq.normalize())));
 ;; }
-(defmethod signed-distance ((edge linear-segment) origin)
+(defmethod signed-distance ((edge linear-segment) origin param)
   (let* ((points (points edge))
-     (aq (v- origin (aref points 0)))
-     (ab (v- (aref points 1) (aref points 0)))
-     (param (/ (dot-product aq ab) (dot-product ab ab)))
-     (eq (v- (aref points (if (> param 0.5) 1 0)) origin))
-     (end-point-distance (vlength eq)))
+	 (aq (v- origin (aref points 0)))
+	 (ab (v- (aref points 1) (aref points 0)))
+	 (param (/ (dot-product aq ab) (dot-product ab ab)))
+	 (eq (v- (aref points (if (> param 0.5) 1 0)) origin))
+	 (end-point-distance (vlength eq)))
     (when (and (> param 0)
-           (< param 1))
+	       (< param 1))
       (let ((ortho-distance (dot-product (get-orthonormal ab nil) aq)))
-    (when (< (abs ortho-distance) end-point-distance)
-      (return-from signed-distance (values (make-instance 'signed-distance :distance ortho-distance :dot 0)
-                           param)))))
+	(when (< (abs ortho-distance) end-point-distance)
+	  (return-from signed-distance (values (make-instance 'signed-distance :distance ortho-distance :dot 0)
+					       param)))))
     (values (make-instance 'signed-distance
-               :distance (* (non-zero-sign (cross-product aq ab)) end-point-distance)
-               :dot (abs (dot-product (vunit ab) (vunit eq))))
-        param)))
-           
+			   :distance (* (non-zero-sign (cross-product aq ab)) end-point-distance)
+			   :dot (abs (dot-product (vunit ab) (vunit eq))))
+	    param)))
+
