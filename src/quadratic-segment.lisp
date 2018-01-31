@@ -129,28 +129,26 @@
 ;; ///  0 = no intersection or co-linear
 ;; /// +1 = for each intersection increasing in the Y axis
 ;; /// -1 = for each intersection decreasing in the Y axis
-;; static int crossQuad(const Point2& r, const Point2& p0, const Point2& c0, const Point2& p1, int depth, EdgeSegment::CrossingCallback* cb) {
-;;     if (r.y < min(p0.y, min(c0.y, p1.y)))
-;;         return 0;
-;;     if (r.y > max(p0.y, max(c0.y, p1.y)))
-;;         return 0;
-;;     if (r.x >= max(p0.x, max(c0.x, p1.x)))
-;;         return 0;
+(defun cross-quad (r p0 c0 p1 depth cb)
 
-;;     // Recursively subdivide the curve to find the intersection point(s). If we haven't
-;;     // converged on a solution by a given depth, just treat it as a linear segment
-;;     // and call the approximation good enough.
-;;     if( depth > 30 )
-;;         return crossLine(r, p0, p1, cb);
+  (when (or (< (vy2 r) (min (vy2 p0) (min (vy2 c0) (vy2 p1))))
+	    (> (vy2 r) (max (vy2 p0) (max (vy2 c0) (vy2 p1))))
+	    (>= (vx2 r) (max (vx2 p0) (max (vx2 c0) (vx2 p1)))))
+    (return-from cross-quad 0))
+  
+  ;; Recursively subdivide the curve to find the intersection point(s). If we haven't
+  ;; converged on a solution by a given depth, just treat it as a linear segment
+  ;; and call the approximation good enough.
+  (when (> depth 30)
+    (return-from cross-quad (cross-line r p0 p1 cb)))
 
-;;     depth++;
+  (incf depth)
 
-;;     Point2 mc0 = (p0 + c0) * 0.5;
-;;     Point2 mc1 = (c0 + p1) * 0.5;
-;;     Point2 mid = (mc0 + mc1) * 0.5;
+  (let ((mc0 (v* (v+ p0 c0) 0.5))
+	(mc1 (v* (v+ c0 p1) 0.5))
+	(mid (v* (v+ mc0 mc1) 0.5)))
 
-;;     return crossQuad(r, p0, mc0, mid, depth, cb) + crossQuad(r, mid, mc1, p1, depth, cb);
-;; }
+    (+ (cross-quad r p0 mc0 mid depth cb) (cross-quad r mid mc1 p1 depth cb))))
 
 (defmethod cross-points ((edge quadratic-segment) r cb)
   (let ((points (points edge)))
