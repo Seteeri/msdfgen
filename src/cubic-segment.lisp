@@ -223,48 +223,69 @@
   (let ((points (points edge)))
     (cross-cubic r (aref points 0) (aref points 1) (aref points 2) (aref points 3) 0 cb)))
 
-;; SignedDistance CubicSegment::signedDistance(Point2 origin, double &param) const {
-;;     Vector2 qa = p[0]-origin;
-;;     Vector2 ab = p[1]-p[0];
-;;     Vector2 br = p[2]-p[1]-ab;
-;;     Vector2 as = (p[3]-p[2])-(p[2]-p[1])-br;
+;; Parameters for iterative search of closest point on a cubic Bezier curve. Increase for higher precision.
+(defconstant +msdfgen-cubic-search-starts+ 4)
+(defconstant +msdfgen-cubic-search-steps+ 4)
 
-;;     Vector2 epDir = direction(0);
-;;     double minDistance = nonZeroSign(crossProduct(epDir, qa))*qa.length(); // distance from A
-;;     param = -dotProduct(qa, epDir)/dotProduct(epDir, epDir);
-;;     {
-;;         epDir = direction(1);
-;;         double distance = nonZeroSign(crossProduct(epDir, p[3]-origin))*(p[3]-origin).length(); // distance from B
-;;         if (fabs(distance) < fabs(minDistance)) {
-;;             minDistance = distance;
-;;             param = dotProduct(origin+epDir-p[3], epDir)/dotProduct(epDir, epDir);
-;;         }
-;;     }
-;;     // Iterative minimum distance search
-;;     for (int i = 0; i <= MSDFGEN_CUBIC_SEARCH_STARTS; ++i) {
-;;         double t = (double) i/MSDFGEN_CUBIC_SEARCH_STARTS;
-;;         for (int step = 0;; ++step) {
-;;             Vector2 qpt = point(t)-origin;
-;;             double distance = nonZeroSign(crossProduct(direction(t), qpt))*qpt.length();
-;;             if (fabs(distance) < fabs(minDistance)) {
-;;                 minDistance = distance;
-;;                 param = t;
-;;             }
-;;             if (step == MSDFGEN_CUBIC_SEARCH_STEPS)
-;;                 break;
-;;             // Improve t
-;;             Vector2 d1 = 3*as*t*t+6*br*t+3*ab;
-;;             Vector2 d2 = 6*as*t+6*br;
-;;             t -= dotProduct(qpt, d1)/(dotProduct(d1, d1)+dotProduct(qpt, d2));
-;;             if (t < 0 || t > 1)
-;;                 break;
-;;         }
-;;     }
+(defmethod signed-distance ((edge cubic-segment) origin)
+  (let* ((points (points edge))
+	 (qa (v- (aref points 0) origin))
+	 (ab (v- (aref points 1) (aref points 0)))
+	 (br (v- (aref points 2) (aref points 1) ab))
+	 (as (v- (v- (aref points 3) (aref points 2))
+		 (v- (aref points 2) (aref points 1))
+		 br))
+	 (ep-dir (direction edge 0))
+	 (min-distance (* (non-zero-sign (cross-product ep-dir qa))
+			  (vlength qa)))
+	 (param (- (/ (dot-product qa ep-dir) (dot-product ep-dir ep-dir)))))
 
-;;     if (param >= 0 && param <= 1)
-;;         return SignedDistance(minDistance, 0);
-;;     if (param < .5)
-;;         return SignedDistance(minDistance, fabs(dotProduct(direction(0).normalize(), qa.normalize())));
-;;     else
-;;         return SignedDistance(minDistance, fabs(dotProduct(direction(1).normalize(), (p[3]-origin).normalize())));
-;; }
+    (setf ep-dir (direction edge 1))
+    
+    (let ((distance (* (non-zero-sign (cross-product ep-dir (v- (aref points 3) origin)))
+		       (vunit (v- (aref points 3) origin)))))
+      (when (< (abs distance) (abs min-distance))
+	(setf min-distance distance)
+	(setf param (/ (dot-product (v- (v+ origin ep-dir) (aref points 3)))
+		       (dot-product ep-dir ep-dir)))))
+	 
+    ;; Iterative minimum distance search
+    (iter (for i from 0 to +msdfgen-cubic-search-starts+)
+	  (for u = (/ i +msdfgen-cubic-search-starts+))
+	  (iter (for step upfrom 0)
+		(let ((qpt (v- (point edge u) origin))
+		      (distance (* (non-zero-sign (cross-product (direction edge u) qpt))
+				   (vlength qpt))))
+		  (when (< (abs distance) (min-distance))
+		    (setf min-distance distance)
+		    (setf param u))
+		  (when (= step +msdfgen-cubic-search-steps)
+		    (finish))
+		  ;; Improve t
+		  (let ((d1 (v+ (v* 3 as u u)
+				(v* 6 br u)
+				(v* 3 ab)))
+			(d2 (v+ (v* 6 as u)
+				(v* 6 br))))
+		    (setf u (- (/ (dot-product qpt d1)
+				  (v+ (dot-product d1 d1)
+				      (dot-product qpt d2)))))
+		    (when (or (< u 0) (> u 1))
+		      (finish)))))))
+
+  (when (and (>= param 0) (<= param 1))
+    (return-from signed-distance (values (make-instance 'signed-distance
+							:distance min-distance
+							:dot 0)
+					 param)))
+  (if (< param 0.5)
+      (return-from signed-distance (values (make-instance 'signed-distance
+							  :distance min-distance
+							  :dot (abs (dot-product (vunit (direction edge 0))
+										 (vunit qa))))
+					   param))
+      (return-from signed-distance (values (make-instance 'signed-distance
+							  :distance min-distance
+							  :dot (abs (dot-product (vunit (direction edge 1))
+										 (vunit (v- (aref points 3) origin)))))
+					   param))))
