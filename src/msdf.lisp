@@ -131,7 +131,7 @@
 				      clashes))))
     (format t "clashes length: ~a~%" (length clashes))
     (iter (for clash in-vector clashes)
-	  (let* ((pixel (get-pixel (aref clash 0) (aref clash 1) w))
+	  (let* ((pixel (get-pixel output (aref clash 0) (aref clash 1) w))
 		 (med (median (aref pixel 0) (aref pixel 1) (aref pixel 2))))
 	    (setf (aref pixel 0) med)
 	    (setf (aref pixel 1) med)
