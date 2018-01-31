@@ -57,67 +57,67 @@
 (defmethod split-in-thirds ((edge cubic-segment))
   (with-slots (points color) edge
     (let ((p0 (aref points 0))
-      (p1 (aref points 1))
-      (p2 (aref points 2))
-      (p3 (aref points 3)))
+	  (p1 (aref points 1))
+	  (p2 (aref points 2))
+	  (p3 (aref points 3)))
       (values (make-instance 'cubic-segment
-                 p0
-                 (if (= p0 p1)
-                 p0
-                 (mix-point p0 p1 (/ 1 3)))
-                 (mix-point (mix-point p0 p1 (/ 1 3))
-                    (mix-point p1 p2 (/ 1 3))
-                    (/ 1 3))
-                 (point edge (/ 1 3))
-                 color)
-          (make-instance 'cubic-segment
-                 (point edge (/1 3))           
-                 (mix-point (mix-point (mix-point p0 p1 (/ 1 3))
-                           (mix-point p1 p2 (/ 1 3))
-                           (/ 1 3))
-                    (mix-point (mix-point p1 p2 (/ 1 3))
-                           (mix-point p2 p3 (/ 1 3))
-                           (/ 1 3))
-                    (/ 2 3))
-                 (mix-point (mix-point (mix-point p0 p1 (/ 2 3))
-                           (mix-point p1 p2 (/ 2 3))
-                           (/ 2 3))
-                    (mix-point (mix-point p1 p2 (/ 2 3))
-                           (mix-point p2 p3 (/ 2 3))
-                           (/ 2 3))
-                    (/ 1 3))
-                 (point edge (/ 2 3))
-                 color)
-          (make-instance 'cubic-segment
-                 (point edge (/ 2 3))
-                 (mix-point (mix-point p1 p2 (/ 2 3))
-                    (mix-point p2 p3 (/ 2 3))
-                    (/ 2 3))
-                 (if (= p2 p3)
-                 p3
-                 (mix-point p2 p3 (/ 2 3)))
-                 p3
-                 color)))))
+			     p0
+			     (if (= p0 p1)
+				 p0
+				 (mix-point p0 p1 (/ 1 3)))
+			     (mix-point (mix-point p0 p1 (/ 1 3))
+					(mix-point p1 p2 (/ 1 3))
+					(/ 1 3))
+			     (point edge (/ 1 3))
+			     color)
+	      (make-instance 'cubic-segment
+			     (point edge (/1 3))           
+			     (mix-point (mix-point (mix-point p0 p1 (/ 1 3))
+						   (mix-point p1 p2 (/ 1 3))
+						   (/ 1 3))
+					(mix-point (mix-point p1 p2 (/ 1 3))
+						   (mix-point p2 p3 (/ 1 3))
+						   (/ 1 3))
+					(/ 2 3))
+			     (mix-point (mix-point (mix-point p0 p1 (/ 2 3))
+						   (mix-point p1 p2 (/ 2 3))
+						   (/ 2 3))
+					(mix-point (mix-point p1 p2 (/ 2 3))
+						   (mix-point p2 p3 (/ 2 3))
+						   (/ 2 3))
+					(/ 1 3))
+			     (point edge (/ 2 3))
+			     color)
+	      (make-instance 'cubic-segment
+			     (point edge (/ 2 3))
+			     (mix-point (mix-point p1 p2 (/ 2 3))
+					(mix-point p2 p3 (/ 2 3))
+					(/ 2 3))
+			     (if (= p2 p3)
+				 p3
+				 (mix-point p2 p3 (/ 2 3)))
+			     p3
+			     color)))))
 
 (defmethod point ((edge cubic-segment) w)
   (let* ((points (points edge))
-     (p0 (aref points 0))
-     (p1 (aref points 1))
-     (p12 (mix-point p1 p2 w)))
+	 (p0 (aref points 0))
+	 (p1 (aref points 1))
+	 (p12 (mix-point p1 p2 w)))
     (mix-point (mix-point (mix-point p0 p1 w)
-              p12
-              w)
-           (mix-point p12
-              (mix-point p2 p3 w)
-              w)
-           w)))
+			  p12
+			  w)
+	       (mix-point p12
+			  (mix-point p2 p3 w)
+			  w)
+	       w)))
 
 (defmethod move-end-point-cubic ((edge cubic-segment) to)    
   (let ((points (points edge)))
     (incf (aref points 2)
-      (- to (aref points 3)))
+	  (- to (aref points 3)))
     (setf (aref points 3)
-      to)))
+	  to)))
 
 ;; Vector2 CubicSegment::direction(double param) const {
 ;;     Vector2 tangent = (mix (mix p[1]-p[0] p[2]-p[1] param)
@@ -131,13 +131,13 @@
 ;; }
 (defmethod direction ((edge cubic-segment) param)
   (let* ((points (points edge))
-     (tangent (mix-point (mix-point (v- (aref points 1) (aref points 0))
-                    (v- (aref points 2) (aref points 1))
-                    param)
-                 (mix-point (v- (aref points 2) (aref points 1))
-                    (v- (aref points 3) (aref points 2))
-                    param)
-                 param)))
+	 (tangent (mix-point (mix-point (v- (aref points 1) (aref points 0))
+					(v- (aref points 2) (aref points 1))
+					param)
+			     (mix-point (v- (aref points 2) (aref points 1))
+					(v- (aref points 3) (aref points 2))
+					param)
+			     param)))
     ;; when not zero vectors
     (when (v-not tangent)
       (when (= param 0) (return-from direction (v- (aref points 2) (aref points 0))))
@@ -169,22 +169,22 @@
     ;; simplify this
     (multiple-value-bind (l2 b2 r2 t2) (point-bounds (aref points 0) left bottom right top)
       (multiple-value-bind (l3 b3 r3 t3) (point-bounds (aref points 3) l2 b2 r2 t2)
-    ;; check these
-    (let* ((a0 (v- (aref points 1) (aref points 0)))
-           (a1 (v* (v- (aref points 2) (aref points 1) a0) 2))
-           (a2 (v+ (v- (v* (aref points 2) 3) (aref points 3))
-               (v- (v* (aref points 1) 3) (aref points 0)))))
-      
-      (multiple-value-bind (x solutions) (solve-quadratic (vec2 (vx2 a2) (vx2 a1) (vx2 a0)))
-        (iter (for i from 0 below solutions)
-          (when (and (> (aref x i) 0) (< (aref x i) 1))
-            (multiple-value-bind (l4 b4 r4 t4) (point-bounds (point edge (aref x i)) l3 b3 r3 t3)
-              
-              (multiple-value-bind (x solutions) (solve-quadratic (vec2 (vy2 a2) (vy2 a1) (vy2 a0)))
-            (iter (for i from 0 below solutions)
-                  (when (and (> (aref x i) 0) (< (aref x i) 1))
-                (multiple-value-bind (l5 b5 r5 t5) (point-bounds (point edge (aref x i)) l4 b4 r4 t4)
-                  (values l5 b5 r5 t5))))))))))))))
+	;; check these
+	(let* ((a0 (v- (aref points 1) (aref points 0)))
+	       (a1 (v* (v- (aref points 2) (aref points 1) a0) 2))
+	       (a2 (v+ (v- (v* (aref points 2) 3) (aref points 3))
+		       (v- (v* (aref points 1) 3) (aref points 0)))))
+	  
+	  (multiple-value-bind (x solutions) (solve-quadratic (vec2 (vx2 a2) (vx2 a1) (vx2 a0)))
+	    (iter (for i from 0 below solutions)
+		  (when (and (> (aref x i) 0) (< (aref x i) 1))
+		    (multiple-value-bind (l4 b4 r4 t4) (point-bounds (point edge (aref x i)) l3 b3 r3 t3)
+		      
+		      (multiple-value-bind (x solutions) (solve-quadratic (vec2 (vy2 a2) (vy2 a1) (vy2 a0)))
+			(iter (for i from 0 below solutions)
+			      (when (and (> (aref x i) 0) (< (aref x i) 1))
+				(multiple-value-bind (l5 b5 r5 t5) (point-bounds (point edge (aref x i)) l4 b4 r4 t4)
+				  (values l5 b5 r5 t5))))))))))))))
 
 
 ;; /// Check how many times a ray from point R extending to the +X direction intersects
@@ -199,23 +199,23 @@
 ;;         return 0;
 ;;     if (r.x >= max(p0.x, max(c0.x, max(c1.x, p1.x))))
 ;;         return 0;
-    
+
 ;;     // Recursively subdivide the curve to find the intersection point(s). If we haven't
 ;;     // converged on a solution by a given depth, just treat it as a linear segment
 ;;     // and call the approximation good enough.
 ;;     if( depth > 30 )
 ;;         return crossLine(r, p0, p1, cb);
-    
+
 ;;     depth++;
-    
+
 ;;     Point2 mid = (c0 + c1) * 0.5;
 ;;     Point2 c00 = (p0 + c0) * 0.5;
 ;;     Point2 c11 = (c1 + p1) * 0.5;
 ;;     Point2 c01 = (c00 + mid) * 0.5;
 ;;     Point2 c10 = (c11 + mid) * 0.5;
-    
+
 ;;     mid = (c01 + c10) * 0.5;
-    
+
 ;;     return crossCubic(r, p0, c00, c01, mid, depth, cb) + crossCubic(r, mid, c10, c11, p1, depth, cb);
 ;; }
 
