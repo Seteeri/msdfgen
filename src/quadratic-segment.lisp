@@ -152,9 +152,9 @@
 ;;     return crossQuad(r, p0, mc0, mid, depth, cb) + crossQuad(r, mid, mc1, p1, depth, cb);
 ;; }
 
-;; int QuadraticSegment::crossings(const Point2 &r, CrossingCallback* cb) const {
-;;     return crossQuad(r, p[0], p[1], p[2], 0, cb);
-;; }
+(defmethod cross-points ((edge quadratic-segment) r cb)
+  (let ((points (points edge)))
+    (cross-quad r (aref points 0) (aref points 1) (aref points 2) 0 cb)))
 
 ;; SignedDistance QuadraticSegment::signedDistance(Point2 origin, double &param) const {
 ;;     Vector2 qa = p[0]-origin;
