@@ -124,21 +124,7 @@
 	(return-from cross-line w))))
   0)
 
-
-;; SignedDistance LinearSegment::signedDistance(Point2 origin, double &param) const {
-;;     Vector2 aq = origin-p[0];
-;;     Vector2 ab = p[1]-p[0];
-;;     param = dotProduct(aq, ab)/dotProduct(ab, ab);
-;;     Vector2 eq = p[param > .5]-origin;
-;;     double endpointDistance = eq.length();
-;;     if (param > 0 && param < 1) {
-;;         double orthoDistance = dotProduct(ab.getOrthonormal(false), aq);
-;;         if (fabs(orthoDistance) < endpointDistance)
-;;             return SignedDistance(orthoDistance, 0);
-;;     }
-;;     return SignedDistance(nonZeroSign(crossProduct(aq, ab))*endpointDistance, fabs(dotProduct(ab.normalize(), eq.normalize())));
-;; }
-(defmethod signed-distance ((edge linear-segment) origin param)
+(defmethod signed-distance ((edge linear-segment) origin)
   (let* ((points (points edge))
 	 (aq (v- origin (aref points 0)))
 	 (ab (v- (aref points 1) (aref points 0)))

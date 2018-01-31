@@ -154,17 +154,7 @@
   (let ((points (points edge)))
     (cross-quad r (aref points 0) (aref points 1) (aref points 2) 0 cb)))
 
-;; SignedDistance QuadraticSegment::signedDistance(Point2 origin, double &param) const {
-;;     Vector2 qa = p[0]-origin;
-;;     Vector2 ab = p[1]-p[0];
-;;     Vector2 br = p[0]+p[2]-p[1]-p[1];
-;;     double a = dotProduct(br, br);
-;;     double b = 3*dotProduct(ab, br);
-;;     double c = 2*dotProduct(ab, ab)+dotProduct(qa, br);
-;;     double d = dotProduct(qa, ab);
-;;     double t[3];
-;;     int solutions = solveCubic(t, a, b, c, d);
-(defmethod signed-distance ((edge quadratic-segment) origin param)
+(defmethod signed-distance ((edge quadratic-segment) origin)
   (let* ((points (points edge))
 	 (qa (v- (aref points 0) origin))
 	 (ab (v- (aref points 1) (aref points 0)))
@@ -197,21 +187,17 @@
 		  (setf param (aref e i)))))))
 
     (when (and (>= param 0) (<= param 1))
-      (return-from signed-distance (make-instance 'signed-distance
-						  :distance min-distance
-						  :dot 0)))
+      (return-from signed-distance (values (make-instance 'signed-distance
+							  :distance min-distance
+							  :dot 0)
+					   param)))
     (if (< param 0.5)
-	(return-from signed-distance (make-instance 'signed-distance
-						    :distance min-distance
-						    :dot (abs (dot-product (vunit ab) (vunit qa)))))
-	(return-from signed-distance (make-instance 'signed-distance
-						    :distance min-distance
-						    :dot (abs (dot-product (vunit (v- (aref points 2) (aref points 1)))
-									   (vunit (v- (aref points 2) origin)))))))))
-;;     if (param >= 0 && param <= 1)
-;;         return SignedDistance(minDistance, 0);
-;;     if (param < .5)
-;;         return SignedDistance(minDistance, fabs(dotProduct(ab.normalize(), qa.normalize())));
-;;     else
-;;         return SignedDistance(minDistance, fabs(dotProduct((p[2]-p[1]).normalize(), (p[2]-origin).normalize())));
-;; }
+	(return-from signed-distance (values (make-instance 'signed-distance
+							    :distance min-distance
+							    :dot (abs (dot-product (vunit ab) (vunit qa))))
+					     param))
+	(return-from signed-distance (values (make-instance 'signed-distance
+							    :distance min-distance
+							    :dot (abs (dot-product (vunit (v- (aref points 2) (aref points 1)))
+										   (vunit (v- (aref points 2) origin)))))
+					     param)))))
