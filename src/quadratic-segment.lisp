@@ -145,10 +145,9 @@
 
   (incf depth)
 
-  (let ((mc0 (v* (v+ p0 c0) 0.5))
-	(mc1 (v* (v+ c0 p1) 0.5))
-	(mid (v* (v+ mc0 mc1) 0.5)))
-
+  (let* ((mc0 (v* (v+ p0 c0) 0.5))
+	 (mc1 (v* (v+ c0 p1) 0.5))
+	 (mid (v* (v+ mc0 mc1) 0.5)))
     (+ (cross-quad r p0 mc0 mid depth cb) (cross-quad r mid mc1 p1 depth cb))))
 
 (defmethod cross-points ((edge quadratic-segment) r cb)
