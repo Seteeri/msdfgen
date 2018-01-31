@@ -186,38 +186,38 @@
 				(multiple-value-bind (l5 b5 r5 t5) (point-bounds (point edge (aref x i)) l4 b4 r4 t4)
 				  (values l5 b5 r5 t5))))))))))))))
 
-
 ;; /// Check how many times a ray from point R extending to the +X direction intersects
 ;; /// the given segment:
 ;; ///  0 = no intersection or co-linear
 ;; /// +1 = for each intersection increasing in the Y axis
 ;; /// -1 = for each intersection decreasing in the Y axis
-;; static int crossCubic(const Point2& r, const Point2& p0, const Point2& c0, const Point2& c1, const Point2& p1, int depth, EdgeSegment::CrossingCallback* cb) {
-;;     if (r.y < min(p0.y, min(c0.y, min(c1.y, p1.y))))
-;;         return 0;
-;;     if (r.y > max(p0.y, max(c0.y, max(c1.y, p1.y))))
-;;         return 0;
-;;     if (r.x >= max(p0.x, max(c0.x, max(c1.x, p1.x))))
-;;         return 0;
+(defun cross-cubic (r p0 c0 c1 p1 depth cb)
+  ;; int crossCubic(const Point2& r, const Point2& p0, const Point2& c0, const Point2& c1, const Point2& p1, int depth, EdgeSegment::CrossingCallback* cb) {
+  
+  (when (or (< (vy2 r) (min (vy2 p0) (min (vy2 c0) (min (vy2 c1) (vy2 p1)))))
+	    (> (vy2 r) (max (vy2 p0) (max (vy2 c0) (max (vy2 c1) (vy2 p1)))))
+	    (>= (vx2 r) (max (vx2 p0) (max (vx2 c0) (max (vx2 c1) (vx2 p1))))))
+    (return-from cross-cubic 0))
+  
+  ;; Recursively subdivide the curve to find the intersection point(s). If we haven't
+  ;; converged on a solution by a given depth, just treat it as a linear segment
+  ;; and call the approximation good enough.
+  (when (> depth 30)
+    (return-from cross-cubic (cross-line r p0 p1 cb)))
 
-;;     // Recursively subdivide the curve to find the intersection point(s). If we haven't
-;;     // converged on a solution by a given depth, just treat it as a linear segment
-;;     // and call the approximation good enough.
-;;     if( depth > 30 )
-;;         return crossLine(r, p0, p1, cb);
+  ;; original function is pass by value, not reference
+  ;; however points are pass by reference
+  (incf depth)
 
-;;     depth++;
+  (let* ((mid (v* (v+ c0 c1) 0.5))
+	 (c00 (v* (v+ p0 c0) 0.5))
+	 (c11 (v* (v+ c1 p1) 0.5))
+	 (c01 (v* (v+ c00 mid) 0.5))
+	 (c10 (v* (v+ c11 mid) 0.5)))
+    (setf mid (v* (v+ c01 c10) 0.5))
 
-;;     Point2 mid = (c0 + c1) * 0.5;
-;;     Point2 c00 = (p0 + c0) * 0.5;
-;;     Point2 c11 = (c1 + p1) * 0.5;
-;;     Point2 c01 = (c00 + mid) * 0.5;
-;;     Point2 c10 = (c11 + mid) * 0.5;
-
-;;     mid = (c01 + c10) * 0.5;
-
-;;     return crossCubic(r, p0, c00, c01, mid, depth, cb) + crossCubic(r, mid, c10, c11, p1, depth, cb);
-;; }
+    ;; recursive
+    (+ (cross-cubic r p0 c00 c01 mid depth cb) (cross-cubic r mid c10 c11 p1 depth cb))))
 
 (defmethod crossings2 ((edge cubic-segment) r cb)
   (let ((points (points edge)))
