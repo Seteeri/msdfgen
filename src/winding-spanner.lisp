@@ -81,18 +81,17 @@
 
     (when *debug-advance-to*
       (format t "[advance-to] b. cur-w = ~a~%" cur-w))
-    
+
+    ;; use (length crossings) == vector.end()
     (cond ((= (fill-rule ws) +fill-rule-non-zero+)
 	   (return-from advance-to (if (/= cur-w 0) 1 -1)))
 	  ((= (fill-rule ws) +fill-rule-even-odd+)
 	   (return-from advance-to (if (== (mod cur-w 2) 0) 1 -1)))
 	  ((= (fill-rule ws) +fill-rule-none+)
-	   (if cur-span
-	       (return-from advance-to (if (not (eq cur-span
-						    (aref crossings (- (length crossings) 1))))
-					   (sign (second cur-span))
-					   0))
-	       (return-from advance-to 0))))))
+	   (return-from advance-to (if (not (eq cur-span (length crossings)))
+				       (sign (second (aref crossings cur-span)))
+				       0))
+	   (return-from advance-to 0)))))
 
 ;; /// Returns 1 for positive values, -1 for negative values, and 0 for zero.
 ;; template <typename T>

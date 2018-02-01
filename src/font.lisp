@@ -222,7 +222,7 @@
 	   (format t "[cubicto] ~a:~%" edge)
 	   (format t "          ~a | ~a, ~a, ~a~%" (pos *ft-context*) control-1 control-2 to))
 	 (vector-push-extend edge (edges (contour *ft-context*)))
-	 (setf (pos *ft-context*) (vcopy2 to))))))
+	 (setf (pos *ft-context*) (vcopy2 to)))))))
 
 
 (declaim (inline clamp))
