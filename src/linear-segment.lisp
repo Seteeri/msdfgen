@@ -23,21 +23,29 @@
 ;;     part3 = new LinearSegment(point(2/3.), p[1], color);
 ;; }
 (defmethod split-in-thirds ((edge linear-segment))
-  ;; EdgeSegment has p[*], color, point*()
   (with-slots (points color) edge
-    (let ((p0 (aref points 0))
-	  (p1 (aref points 1)))
-      (values (make-instance 'linear-segment
-			     :points #(p0 (point edge (/ 1 3)))
-			     :color color)
-	      (make-instance 'linear-segment
-			     :points #((point edge (/ 1 3))
-				       (point edge (/ 2 3)))
-			     :color color)
-	      (make-instance 'linear-segment
-			     :points #((point edge (/ 2 3))
-				       p1)
-			     :color color)))))
+    ;;(assert (not (eq color nil)))
+    (let* ((p0 (aref points 0))
+	   (p1 (aref points 1))
+	   (e0 (make-instance 'linear-segment
+			      :points (make-array 2 :initial-contents (list p0
+									    (point edge (/ 1 3))))
+			      :color color))
+	   (e1 (make-instance 'linear-segment
+			      :points (make-array 2 :initial-contents (list (point edge (/ 1 3))
+									    (point edge (/ 2 3))))
+			      :color color))
+	   (e2 (make-instance 'linear-segment
+			      :points (make-array 2 :initial-contents (list (point edge (/ 2 3))
+									    p1))
+			      :color color)))
+
+      (when *debug-split-in-thirds*
+	(format t "[l:s-i-t] ~a: ~a~%" e0 (points e0))
+	(format t "[l:s-i-t] ~a: ~a~%" e1 (points e1))
+	(format t "[l:s-i-t] ~a: ~a~%" e2 (points e2)))
+      
+      (values e0 e1 e2))))
 
 (defmethod point ((edge linear-segment) w)
   (let* ((points (points edge))
@@ -54,6 +62,7 @@
 ;; }
 (defmethod direction ((edge linear-segment) param)
   (let ((points (points edge)))
+    ;; (format t "[l:direction] ~a~%" points)
     (v- (aref points 1) (aref points 0))))
 
 ;; void LinearSegment::bounds(double &l, double &b, double &r, double &t) const {
@@ -62,8 +71,8 @@
 ;; }
 (defmethod bounds ((edge linear-segment) left bottom right top)
   (let ((points (points edge)))
-    ;; simplify this
-    ;; (format t "    [bounds:linear] iterating~%")
+    (when *debug-bounds*
+      (format t "    [bounds:linear] iterating~%"))
     (multiple-value-bind (l2 b2 r2 t2) (point-bounds (aref points 0) left bottom right top)
       (multiple-value-bind (l3 b3 r3 t3) (point-bounds (aref points 1) l2 b2 r2 t2)
 	(values l3 b3 r3 t3)))))
@@ -100,16 +109,23 @@
 ;; }
 (defun cross-line (r p0 p1 cb)
 
-  (format t "[cross-line] ~a, ~a, ~a~%"
-	  (< (vy2 r) (min (vy2 p0) (vy2 p1)))
-	  (>= (vy2 r) (max (vy2 p0) (vy2 p1)))
-	  (>= (vx2 r) (max (vx2 p0) (vx2 p1))))
+  ;; (format t "[cross-line] ~a, ~a, ~a~%"
+  ;; 	  (< (vy2 r) (min (vy2 p0) (vy2 p1)))
+  ;; 	  (>= (vy2 r) (max (vy2 p0) (vy2 p1)))
+  ;; 	  (>= (vx2 r) (max (vx2 p0) (vx2 p1))))
+  (format t "[cross-line] pts: ~a, ~a~%"
+	  ;r
+	  p0
+	  p1)
   
   (when (< (vy2 r) (min (vy2 p0) (vy2 p1)))
+    ;; (format t "[cross-line] 1~%")
     (return-from cross-line 0))
   (when (>= (vy2 r) (max (vy2 p0) (vy2 p1)))
+    ;; (format t "[cross-line] 2~%")
     (return-from cross-line 0))
   (when (>= (vx2 r) (max (vx2 p0) (vx2 p1)))
+    ;; (format t "[cross-line] 3~%")
     (return-from cross-line 0))
   
   (let ((x-intercept (+ (vx2 p0)
@@ -120,8 +136,12 @@
     (when (< (vx2 r) x-intercept)
       (let ((w (if (< (vy2 p0) (vy2 p1)) 1 -1)))
 	(when cb
+	  ;; (format t "[cross-line] cb~%")
 	  (funcall cb (vec2 x-intercept (vy2 r)) w))
+	;; (format t "[cross-line] 4~%")
 	(return-from cross-line w))))
+
+  ;; (format t "[cross-line] 5~%")
   0)
 
 (defmethod signed-distance ((edge linear-segment) origin)

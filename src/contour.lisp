@@ -32,9 +32,9 @@
                 (setf (fill-pointer edges) 0)
                 (adjust-array edges 0)
                 ;; Create edge-holder instances
-                (vector-push-extend (make-instance 'edge-holder e0) edges)
-                (vector-push-extend (make-instance 'edge-holder e1) edges)
-                (vector-push-extend (make-instance 'edge-holder e2) edges))
+                (vector-push-extend e0 edges)
+                (vector-push-extend e1 edges)
+                (vector-push-extend e2 edges))
             (progn
 
               ;; (format t "[normalize,/=1] ~a~%" edges)
@@ -82,7 +82,10 @@
 ;; }
 (defmethod bounds ((contour contour) left bottom right top)
   (iter (for edge in-vector (edges contour))
-        ;; (format t "  [bounds:contour] iterating~%")
+	(when *debug-bounds*
+	  (format t "  [bounds:contour] iterating~%"))
+	;; (format t  "~a~%" (edges contour))
+	;; (format t "~a, ~a, ~a, ~a, ~a~%" edge left bottom right top)
         (multiple-value-bind (left-1 bottom-1 right-1 top-1) (bounds edge left bottom right top)
           (setf left left-1)
           (setf bottom bottom-1)

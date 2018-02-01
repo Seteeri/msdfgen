@@ -9,7 +9,7 @@
    (color
     :accessor color
     :initarg :color
-    :initform nil
+    :initform +white+
     :documentation "")
    (is-degenerate
     :accessor is-degenerate

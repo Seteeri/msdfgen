@@ -9,13 +9,15 @@
    (color
     :accessor color
     :initarg :color
-    :initform nil
+    :initform +white+
     :documentation "")
    (is-degenerate
     :accessor is-degenerate
     :initarg :is-degenerate
     :initform nil
     :documentation "")))
+
+;; note, init does additional calculation
 
 ;; void QuadraticSegment::splitInThirds(EdgeSegment *&part1, EdgeSegment *&part2, EdgeSegment *&part3) const {
 ;;     part1 = new QuadraticSegment(p[0], mix(p[0], p[1], 1/3.), point(1/3.), color);
@@ -24,25 +26,34 @@
 ;; }
 (defmethod split-in-thirds ((edge quadratic-segment))
   (with-slots (points color) edge
-    (let ((p0 (aref points 0))
-	  (p1 (aref points 1))
-	  (p2 (aref points 2)))
-      (values (make-instance 'quadratic-segment
-			     p0
-			     (mix-point p0 p1 p2)
-			     (point edge (/ 1 3))
-			     color)
-	      (make-instance 'quadratic-segment
-			     (point edge (/ 1 3))
-			     (mix-point (mix-point p0 p1 (/ 5 9))
-					(mix-point p1 p2 (/ 4 9)))
-			     (point edge (/ 2 3))
-			     color)
-	      (make-instance 'quadratic-segment
-			     (point edge (/ 2 3))
-			     (mix-point p1 p2 (/ 2 3))
-			     p2
-			     color)))))
+    (assert (not (eq color nil)))
+    (let* ((p0 (aref points 0))
+	   (p1 (aref points 1))
+	   (p2 (aref points 2))
+	   (e0 (make-instance 'quadratic-segment
+			      :points (make-array 3 :initial-contents (list p0
+									    (mix-point p0 p1 (/ 1 3))
+									    (point edge (/ 1 3))))
+			      :color color))
+	   (e1 (make-instance 'quadratic-segment
+			      :points (make-array 3 :initial-contents (list (point edge (/ 1 3))
+									    (mix-point (mix-point p0 p1 (/ 5 9))
+										       (mix-point p1 p2 (/ 4 9))
+										       0.5)
+									    (point edge (/ 2 3))))
+			      :color color))
+	   (e2 (make-instance 'quadratic-segment
+			      :points (make-array 3 :initial-contents (list (point edge (/ 2 3))
+									    (mix-point p1 p2 (/ 2 3))
+									    p2))
+			      :color color)))
+
+      (when *debug-split-in-thirds*
+	(format t "[q:s-i-t] ~a: ~a~%" e0 (points e0))
+	(format t "[q:s-i-t] ~a: ~a~%" e1 (points e1))
+	(format t "[q:s-i-t] ~a: ~a~%" e2 (points e2)))
+      
+      (values e0 e1 1e2))))
 
 (defmethod point ((edge quadratic-segment) w)
   (let* ((points (points edge))
@@ -75,6 +86,7 @@
 ;; }
 (defmethod direction ((edge quadratic-segment) param)
   (let ((points (points edge)))
+    ;; (format t "[q:direction] ~a~%" points)
     (mix-point (v- (aref points 1) (aref points 0))
 	       (v- (aref points 2) (aref points 1))
 	       param)))
@@ -97,6 +109,8 @@
 
 (defmethod bounds ((edge quadratic-segment) left bottom right top)
   (let ((points (points edge)))
+    (when *debug-bounds*
+      (format t "      [bounds] quadratic-segment:bounds~%"))
     (multiple-value-bind (left-1 bottom-1 right-1 top-1) (point-bounds (aref points 0) left bottom right top)
       (multiple-value-bind (left-2 bottom-2 right-2 top-2) (point-bounds (aref points 2) left-1 bottom-1 right-1 top-1)
 	(let ((bot (v- (v- (aref points 1) (aref points 0))
@@ -144,7 +158,7 @@
     (return-from cross-quad (cross-line r p0 p1 cb)))
 
   (incf depth)
-
+  
   (let* ((mc0 (v* (v+ p0 c0) 0.5))
 	 (mc1 (v* (v+ c0 p1) 0.5))
 	 (mid (v* (v+ mc0 mc1) 0.5)))
@@ -161,14 +175,28 @@
 	 (br (v- (v+ (aref points 0) (aref points 2)) (aref points 1) (aref points 1)))
 	 (a (dot-product br br))
 	 (b (* 3 (dot-product ab br)))
-	 (c (* 2 (dot-product qa ab)))
+	 (c (+ (* 2 (dot-product ab ab)) (dot-product qa br)))
 	 (d (dot-product qa ab))
 	 (min-distance (* (non-zero-sign (cross-product ab qa)) (vlength qa)))
 	 (param (- (/ (dot-product qa ab) (dot-product ab ab)))))
 
-    (let ((distance (* (non-zero-sign (cross-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) origin)))
+    (when *debug-conic-signed-distance*
+      (format t "    [quad:sd] qa = ~a~%" qa)
+      (format t "    [quad:sd] ab = ~a~%" ab)
+      (format t "    [quad:sd] br = ~a~%" br)
+      (format t "    [quad:sd] a = ~a~%" a)
+      (format t "    [quad:sd] b = ~a~%" b)
+      (format t "    [quad:sd] c = ~a~%" c)
+      (format t "    [quad:sd] min-distance = ~a~%" min-distance)
+      (format t "    [quad:sd] param = ~a~%" param))
+
+;;     double minDistance = nonZeroSign(crossProduct(ab, qa))*qa.length(); // distance from A
+;;     param = -dotProduct(qa, ab)/dotProduct(ab, ab);
+    
+    (let ((distance (* (non-zero-sign (cross-product ab qa))
 		       (vlength (v- (aref points 2) origin)))))
       (when (< (abs distance) (abs min-distance))
+	(format t "    [quad:sd] min-distance/param change~%")
 	(setf min-distance distance)
 	(setf param (/ (dot-product (v- origin (aref points 1)) (v- (aref points 2) (aref points 1)))
 		       (dot-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) (aref points 1)))))))
@@ -176,28 +204,90 @@
     (multiple-value-bind (n solution) (solve-cubic a b c d)
       ;; (iter (for i from 0 below n)
       ;;       (for x = (nth i solution))
+      (when *debug-conic-signed-distance-solve*
+	(format t "    [quad:sd] n = ~a, solution = ~a~%" n solution))
+      
       (iter (for x in solution)
 	    (when (and (> x 0)
 		       (< x 1))
-	      (let* ((endpoint (v+ (aref points 0) (v* ab (* 2 x)) (v* br (* x))))
+	      (let* ((endpoint (v+ (aref points 0) (v* ab (* 2 x)) (v* br (* x x))))
 		     (distance (* (non-zero-sign (cross-product (v- (aref points 2) (aref points 0)) (v- endpoint origin)))
 				  (vlength (v- endpoint origin)))))
 		(when (<= (abs distance) (abs min-distance))
+		  (format t "    [quad:sd] min-distance/param change~%")
 		  (setf min-distance distance)
 		  (setf param x))))))
 
+    (when *debug-conic-signed-distance*
+      (format t "    -----------------~%" qa)
+      (format t "    [quad:sd] min-distance = ~a~%" min-distance)
+      (format t "    [quad:sd] param = ~a~%" param))
+    
     (when (and (>= param 0) (<= param 1))
       (return-from signed-distance (values (make-instance 'signed-distance
 							  :distance min-distance
 							  :dot 0)
 					   param)))
     (if (< param 0.5)
-	(return-from signed-distance (values (make-instance 'signed-distance
-							    :distance min-distance
-							    :dot (abs (dot-product (vunit ab) (vunit qa))))
-					     param))
-	(return-from signed-distance (values (make-instance 'signed-distance
-							    :distance min-distance
-							    :dot (abs (dot-product (vunit (v- (aref points 2) (aref points 1)))
-										   (vunit (v- (aref points 2) origin)))))
-					     param)))))
+	(progn
+	  (return-from signed-distance (values (make-instance 'signed-distance
+							      :distance min-distance
+							      :dot (abs (dot-product (vunit ab) (vunit qa))))
+					       param)))
+	(progn
+	  (return-from signed-distance (values (make-instance 'signed-distance
+							      :distance min-distance
+							      :dot (abs (dot-product (vunit (v- (aref points 2) (aref points 1)))
+										     (vunit (v- (aref points 2) origin)))))
+					       param))))))
+
+
+;;         return SignedDistance(minDistance, fabs(dotProduct( (p[2]-p[1]).normalize(),
+;;                                                             (p[2]-origin).normalize() )));
+
+;; SignedDistance QuadraticSegment::signedDistance(Point2 origin, double &param) const {
+;;     Vector2 qa = p[0]-origin;
+;;     Vector2 ab = p[1]-p[0];
+;;     Vector2 br = p[0]+p[2]-p[1]-p[1];
+;;     double a = dotProduct(br, br);
+;;     double b = 3*dotProduct(ab, br);
+;;     double c = 2*dotProduct(ab, ab)+dotProduct(qa, br);
+;;     double d = dotProduct(qa, ab);
+;;     double t[3];
+;;     int solutions = solveCubic(t, a, b, c, d);
+
+;;     double minDistance = nonZeroSign(crossProduct(ab, qa))*qa.length(); // distance from A
+;;     param = -dotProduct(qa, ab)/dotProduct(ab, ab);
+        
+;;     {
+;;         double distance = nonZeroSign(crossProduct(p[2]-p[1], p[2]-origin))*(p[2]-origin).length(); // distance from B
+;;         if (fabs(distance) < fabs(minDistance)) {
+;;             minDistance = distance;
+;;             param = dotProduct(origin-p[1], p[2]-p[1])/dotProduct(p[2]-p[1], p[2]-p[1]);
+;;         }
+;;     }
+
+;;     for (int i = 0; i < solutions; ++i) {
+;;         if (t[i] > 0 && t[i] < 1) {
+;;             Point2 endpoint = p[0]+2*t[i]*ab+t[i]*t[i]*br;
+;;             double distance = nonZeroSign(crossProduct(p[2]-p[0], endpoint-origin))*(endpoint-origin).length();
+;;             if (fabs(distance) <= fabs(minDistance)) {
+;;                 minDistance = distance;
+;;                 param = t[i];
+;;             }
+;;         }
+;;     }
+
+;;     if (param >= 0 && param <= 1)
+;;     {
+;;         return SignedDistance(minDistance, 0);
+;;     }
+;;     if (param < .5)
+;;     {
+;;         return SignedDistance(minDistance, fabs(dotProduct(ab.normalize(), qa.normalize())));
+;;     }
+;;     else
+;;     {
+;;         return SignedDistance(minDistance, fabs(dotProduct((p[2]-p[1]).normalize(), (p[2]-origin).normalize())));
+;;     }
+;; }

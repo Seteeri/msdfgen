@@ -17,47 +17,18 @@
     :initform nil
     :documentation "Contour*")))
 
-;; static Point2 ftPoint2(const FT_Vector &vector) {
-;;     return Point2(vector.x/64., vector.y/64.);
-;; }
-;;
 ;; Note:
 ;; Point2 = Vector2
 (defun make-ft-vec2 (x y)
-  (vec2 (/ x 64d0) (/ y 64d0)))
+  (vec2 (/ x 64) (/ y 64)))
 
-(defun write-rgb-buffer-to-ppm-file (filename bitmap width height)
-  (with-open-file (stream filename 
-			  :element-type '(unsigned-byte 8)
-			  :direction :output 
-			  :if-does-not-exist :create
-			  :if-exists :supersede)
-    (let* ((header (format nil "P6~A~D ~D~A255~A" 
-			   #\newline
-			   width height #\newline
-			   #\newline)))
-      
-      (loop 
-	 :for char :across header 
-	 :do (write-byte (char-code char) stream)) #| Assumes char-codes match ASCII |#
+(defparameter *debug-outline-decompose* nil)
+(defparameter *debug-bounds* nil)
+(defparameter *debug-conic-signed-distance* t)
+(defparameter *debug-conic-signed-distance-solve* t)
 
-      (iter (for y from (- height 1) downto 0) ; height-1
-	    (iter (for x from 0 below width) ; width
-		  (let* ((px (get-pixel bitmap x y width)))
-		    (write-byte (clamp (truncate (* (aref px 0) #x100)) 0 #xff) stream)
-		    (write-byte (clamp (truncate (* (aref px 1) #x100)) 0 #xff) stream)
-		    (write-byte (clamp (truncate (* (aref px 2) #x100)) 0 #xff) stream)))))))
-
-;; (loop 
-;;     :for x :upfrom 0 :below width
-;;     :do (loop :for y :upfrom 0 :below height 
-;;        :do (let* ((pixel (get-pixel buffer x y width))
-;;               (red (aref pixel 0))
-;;               (green (aref pixel 1))
-;;               (blue (aref pixel 2)))
-;;            (write-byte red stream)
-;;            (write-byte green stream)
-;;            (write-byte blue stream))))))
+(defparameter *debug-edge-coloring-simple* t)
+(defparameter *debug-split-in-thirds* nil)
 
 (defun main ()
   ;; Shape shape;
@@ -100,7 +71,7 @@
 	;; (sb-ext:exit)
 
 	;; Write output
-	(when nil
+	(when t
 	  (with-open-file (out #p"output.txt"
 			       :direction :output
 			       :if-does-not-exist :create
@@ -127,16 +98,27 @@
   (format t "DONE~%")
   (sb-ext:exit))
 
+(defun write-rgb-buffer-to-ppm-file (filename bitmap width height)
+  (with-open-file (stream filename 
+			  :element-type '(unsigned-byte 8)
+			  :direction :output 
+			  :if-does-not-exist :create
+			  :if-exists :supersede)
+    (let* ((header (format nil "P6~A~D ~D~A255~A" 
+			   #\newline
+			   width height #\newline
+			   #\newline)))
+      
+      (loop 
+	 :for char :across header 
+	 :do (write-byte (char-code char) stream)) #| Assumes char-codes match ASCII |#
 
-(declaim (inline clamp))
-(defun clamp (number min max)
-  "Clamps the NUMBER into [min, max] range. Returns MIN if NUMBER is lesser then
-MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
-  (if (< number min)
-      min
-      (if (> number max)
-	  max
-	  number)))
+      (iter (for y from (- height 1) downto 0) ; height-1
+	    (iter (for x from 0 below width) ; width
+		  (let* ((px (get-pixel bitmap x y width)))
+		    (write-byte (clamp (truncate (* (aref px 0) #x100)) 0 #xff) stream)
+		    (write-byte (clamp (truncate (* (aref px 1) #x100)) 0 #xff) stream)
+		    (write-byte (clamp (truncate (* (aref px 2) #x100)) 0 #xff) stream)))))))
 
 
 (defun load-glyph (face unicode)
@@ -180,51 +162,77 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 
 
 (defun handle-outline-decompose (op p p2 p3)
-  ;; (format t "~a, ~a, ~a, ~a~%"
-  ;;      op p p2 p3)
   
   (cond
     ((eq op :moveto)
      (progn
        (setf (contour *ft-context*) (add-contour (shape *ft-context*)))
-       (let ((point1 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p))))
-	 (format t "[moveto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) point1)
-	 (setf (pos *ft-context*) point1))))
+       (let ((to (make-ft-vec2 (freetype2-types:ft-vector-x p)
+			       (freetype2-types:ft-vector-y p))))
+	 (when *debug-outline-decompose*
+	   (format t "[moveto] ~a:~%" to)
+	   (format t "         ~a -> ~a~%" (pos *ft-context*) to))
+	 (setf (pos *ft-context*) (vcopy2 to)))))
     ((eq op :lineto)
      (progn
-       (let ((to (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-	     (to-2 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-	     (edge (make-instance 'linear-segment)))
-	 (setf (aref (points edge) 0) (pos *ft-context*))
-	 (setf (aref (points edge) 1) to)
-	 (format t "[lineto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) to)
+       (let* ((to (make-ft-vec2 (freetype2-types:ft-vector-x p)
+				(freetype2-types:ft-vector-y p)))
+	      (edge (make-instance 'linear-segment)))
+	 (vector-push (pos *ft-context*) (points edge))
+	 (vector-push to (points edge))
+	 (when *debug-outline-decompose*
+	   (format t "[lineto] ~a:~%" edge)
+	   (format t "         ~a~%" to)
+	   (format t "         ~a | ~a~%" (pos *ft-context*) to))
 	 (vector-push-extend edge (edges (contour *ft-context*)))
-	 (setf (pos *ft-context*) to-2))))
+	 (setf (pos *ft-context*) (vcopy2 to)))))
     ((eq op :conicto)
      (progn
-       (let ((control (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-	     (to (make-ft-vec2 (freetype2-types:ft-vector-x p2) (freetype2-types:ft-vector-y p2)))
-	     (edge (make-instance 'quadratic-segment)))
-	 (setf (aref (points edge) 0) (pos *ft-context*))
-	 (setf (aref (points edge) 1) control)
-	 (setf (aref (points edge) 2) to)
-	 (format t "[conicto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) to)
+       (let* ((control (make-ft-vec2 (freetype2-types:ft-vector-x p)
+				     (freetype2-types:ft-vector-y p)))
+	      (to (make-ft-vec2 (freetype2-types:ft-vector-x p2)
+				(freetype2-types:ft-vector-y p2)))
+	      (edge (make-instance 'quadratic-segment)))
+	 (vector-push (pos *ft-context*) (points edge))
+	 (vector-push control (points edge))
+	 (vector-push to (points edge))
+	 (when *debug-outline-decompose*
+	   (format t "[conicto] ~a:~%" edge)
+	   (format t "          ~a | ~a, ~a~%" (pos *ft-context*) control to)
+	   ;; (format t "          ~a~%" (points edge))
+	   )
 	 (vector-push-extend edge (edges (contour *ft-context*)))
-	 (setf (pos *ft-context*) to))))
+	 (setf (pos *ft-context*) (vcopy2 to)))))
     ((eq op :cubicto)
      (progn
-       (let ((control-1 (make-ft-vec2 (freetype2-types:ft-vector-x p) (freetype2-types:ft-vector-y p)))
-	     (control-2 (make-ft-vec2 (freetype2-types:ft-vector-x p2) (freetype2-types:ft-vector-y p2)))
-	     (to (make-ft-vec2 (freetype2-types:ft-vector-x p3) (freetype2-types:ft-vector-y p3)))
-	     (edge (make-instance 'quadratic-segment)))
-	 (setf (aref (points edge) 0) (pos *ft-context*))
-	 (setf (aref (points edge) 1) control)
-	 (setf (aref (points edge) 2) control)
-	 (setf (aref (points edge) 3) to)
-	 (format t "[cubicto] ft-context pos: ~a -> ~a~%" (pos *ft-context*) to)
+       (error "TODO: cubicto")
+       (let* ((control-1 (make-ft-vec2 (freetype2-types:ft-vector-x p)
+				       (freetype2-types:ft-vector-y p)))
+	      (control-2 (make-ft-vec2 (freetype2-types:ft-vector-x p2)
+				       (freetype2-types:ft-vector-y p2)))
+	      (to (make-ft-vec2 (freetype2-types:ft-vector-x p3)
+				(freetype2-types:ft-vector-y p3)))
+	      (edge (make-instance 'cubic-segment)))
+	 (vector-push (pos *ft-context*) (points edge))
+	 (vector-push control-1 (points edge))
+	 (vector-push control-2 (points edge))
+	 (vector-push to (points edge))
+	 (when *debug-outline-decompose*
+	   (format t "[cubicto] ~a:~%" edge)
+	   (format t "          ~a | ~a, ~a, ~a~%" (pos *ft-context*) control-1 control-2 to))
 	 (vector-push-extend edge (edges (contour *ft-context*)))
-	 (setf (pos *ft-context*) to))))))
+	 (setf (pos *ft-context*) (vcopy2 to))))))
 
+
+(declaim (inline clamp))
+(defun clamp (number min max)
+  "Clamps the NUMBER into [min, max] range. Returns MIN if NUMBER is lesser then
+MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
+  (if (< number min)
+      min
+      (if (> number max)
+	  max
+	  number)))
 
 ;; /// Returns the middle out of three values
 ;; template <typename T>
@@ -290,20 +298,30 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
   (- (* 2 (if (> n 0) 1 0)) 1))
 
 
+;; template <typename T, typename S>
+;; inline T mix(T a, T b, S weight) {
+;;     return (1-weight)*a)+(weight*b)
+;; }
 (defun mix (a b weight)
   (+ (* (- 1 weight)
 	a)
      (* weight
 	b)))
 
-(defun mix-point (a b weight)
-  ;; scale vector then add
-  (let ((as (- 1 weight)))
-    (vec2 (+ (* as (vx2 a))
-	     (* weight (vx2 b)))
-	  (+ (* as (vy2 a))
-	     (* weight (vy2 b))))))
+;; (v+ (v* a (- 1 weight))
+;;     (v* b weight)
 
+;; (defun mix-point (a b weight)
+;;   ;; scale vector then add
+;;   (let ((as (- 1 weight)))
+;;     (vec2 (+ (* as (vx2 a))
+;; 	     (* weight (vx2 b)))
+;; 	  (+ (* as (vy2 a))
+;; 	     (* weight (vy2 b))))))
+(defun mix-point (a b weight)
+  (v+ (v* a (- 1 weight))
+      (v* b weight)))
+    
 ;; (make-array 2
 ;;      :initial-contents
 ;;      (list (+ (* as (aref a 0))
@@ -318,7 +336,8 @@ MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
 ;;     if (p.y > t) t = p.y;
 ;; }
 (defun point-bounds (point left bottom right top)
-  ;; (format t "      [point-bounds] ~a, ~a, ~a, ~a, ~a~%" point left bottom right top)
+  (when *debug-bounds*
+    (format t "       [point-bounds] ~a, ~a, ~a, ~a, ~a~%" point left bottom right top))
   (values (if (< (vx2 point) left) (vx2 point) left)
 	  (if (< (vy2 point) bottom) (vy2 point) bottom)
 	  (if (> (vx2 point) right) (vx2 point) right)

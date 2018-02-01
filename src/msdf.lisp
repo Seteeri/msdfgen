@@ -157,11 +157,6 @@
     :initform 0.0
     :documentation "double")))
 
-
-(defparameter *x* 30)
-(defparameter *y* 5)
-(defparameter *e* t)
-
 ;; g param wrong
 ;; (format t "[generate-msdf] g param: ~4$~%" (near-param g))
 ;; (sb-ext:exit)
@@ -176,13 +171,15 @@
 	  (let ((row (if (inverse-y-axis shape)
 			 (- h y 1)
 			 y)))
-	    ;; implement bounds in *-segments
+
+	    (format t "[generate-msdf] call bounds~%")
 	    (multiple-value-bind (bound-left bound-bottom bound-right bound-top) (bounds shape 0.0 0.0 0.0 0.0)
 	      (format t "~%[generate-msdf] collect-crossings - y, row: ~a, ~a~%" y row)
 	      (collect-crossings spanner
 				 shape
 				 (vec2 (- bound-left 0.5)
 				       (- (/ (+ y 0.5) (vy2 scale)) (vy2 translate)))))
+	    (format t "[generate-msdf] call bounds done~%")
 	    
 	    (iter (for x from 0 below w)
 		  (for foobar = (format t "[generate-msdf] x: ~a~%" x))
@@ -195,21 +192,33 @@
 		  (for real-sign = (advance-to spanner (vx2 p)))
 
 		  (format t "[generate-msdf] real-sign: ~a, p: ~4$, ~4$~%" real-sign (vx2 p) (vy2 p))
-
-		  ;; (when (and (= x 8) (= row 14)) (sb-ext:exit))
 		  
 		  (iter (for contour in-vector (contours shape))
 			(for r = (make-instance 'edge-point))
 			(for g = (make-instance 'edge-point))
 			(for b = (make-instance 'edge-point))
+			(for ii = 0)
 
-			;; (format t "[generate-msdf] length edges: ~a~%" (length (edges contour)))
+			(format t " [generate-msdf] length edges: ~a~%" (length (edges contour)))
 			(iter (for edge in-vector (edges contour))
 			      ;; signed-distance - in edges
 			      ;; fix nvunit -> vunit
+
+			      (format t " [generate-msdf] -----------------~%")
+			      
 			      (multiple-value-bind (distance param) (signed-distance edge p)
 
-				;; (format t "[generateMSDF] dist, dot: ~4$, ~4$~%" (distance (min-distance g)) (dot (min-distance g)))
+				(format t "  [generateMSDF][e#~a] ~a~%" ii edge)
+				(format t "  [generateMSDF][e#~a] dist: ~4$, dot: ~4$~%"
+					ii
+					(distance distance)
+					(dot distance))
+				(format t "                       param: ~4$~%"
+					param)
+				
+				(when (= ii 10)
+				  (format t "  [generateMSDF][e#~a] color edge: ~a, logand green: ~a~%"
+					  ii (color edge) (logand (color edge) +green+)))
 				
 				(when (and (not (= (logand (color edge) +red+) 0))
 					   (sd< distance (min-distance r)))
@@ -225,7 +234,33 @@
 					   (sd< distance (min-distance b)))
 				  (setf (min-distance b) distance)
 				  (setf (near-edge b) edge)
-				  (setf (near-param b) param))))
+				  (setf (near-param b) param))
+
+
+				(format t "  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
+					ii
+					(if (< (distance (min-distance r)) 0.0)
+					    nil
+					    (distance (min-distance r)))
+					(dot (min-distance r)))
+				(format t "  [generateMSDF][e#~a] g dist, dot: ~4$, ~4$~%"
+					ii
+					(if (< (distance (min-distance g)) 0.0)
+					    nil
+					    (distance (min-distance g)))
+					(dot (min-distance g)))
+				(format t "  [generateMSDF][e#~a] b dist, dot: ~4$, ~4$~%"
+					ii
+					(if (< (distance (min-distance b)) 0.0)
+					    nil
+					    (distance (min-distance b)))
+					(dot (min-distance b)))
+
+				;; 10
+				(when (= ii -1) (sb-ext:exit))
+				(incf ii)
+
+				t))
 
 			(when (sd< (min-distance r)
 				   (min-distance sr))
@@ -237,6 +272,9 @@
 				   (min-distance sb))
 			  (setf sb b)))
 
+		  ;; (when nil
+		  ;;   (when (and (= x 11) (= row 0)) (sb-ext:exit)))
+		  
 		  ;; implement other crossing functions then signed-distance functions
 		  ;; (error "BREAKPOINT")
 		  
