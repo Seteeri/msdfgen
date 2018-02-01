@@ -129,7 +129,7 @@
 			  (and (< y (- h 1)) (pixel-clash (get-pixel output x y w) (get-pixel output x (+ y 1) w) (vy2 threshold))))
 		  (vector-push-extend (make-array 2 :initial-contents (list x y))
 				      clashes))))
-    (format t "clashes length: ~a~%" (length clashes))
+    (format t "[correct-msdf-error] clashes length: ~a~%" (length clashes))
     (iter (for clash in-vector clashes)
 	  (let* ((pixel (get-pixel output (aref clash 0) (aref clash 1) w))
 		 (med (median (aref pixel 0) (aref pixel 1) (aref pixel 2))))
@@ -157,9 +157,6 @@
     :initform 0.0
     :documentation "double")))
 
-;; g param wrong
-;; (format t "[generate-msdf] g param: ~4$~%" (near-param g))
-;; (sb-ext:exit)
 (defun generate-msdf (output shape range scale translate &optional (edge-threshold 1.00000001d0))
   (let* ((contour-count (length (contours shape)))
 	 (w 32) ;(w (width output))
@@ -172,17 +169,21 @@
 			 (- h y 1)
 			 y)))
 
-	    (format t "[generate-msdf] call bounds~%")
+	    (when *debug-generate-msdf*
+	      (format t "[generate-msdf] call bounds~%"))
+
 	    (multiple-value-bind (bound-left bound-bottom bound-right bound-top) (bounds shape 0.0 0.0 0.0 0.0)
-	      (format t "~%[generate-msdf] collect-crossings - y, row: ~a, ~a~%" y row)
+	      (when *debug-generate-msdf*
+		(format t "~%[generate-msdf] collect-crossings - y, row: ~a, ~a~%" y row))
 	      (collect-crossings spanner
 				 shape
 				 (vec2 (- bound-left 0.5)
 				       (- (/ (+ y 0.5) (vy2 scale)) (vy2 translate)))))
-	    (format t "[generate-msdf] call bounds done~%")
+	    (when *debug-generate-msdf*
+	      (format t "[generate-msdf] call bounds done~%"))
 	    
 	    (iter (for x from 0 below w)
-		  (for foobar = (format t "[generate-msdf] x: ~a~%" x))
+		  (for foobar = (if *debug-generate-msdf* (format t "[generate-msdf] x: ~a~%" x) nil))
 		  (for p = (v- (v/ (vec2 (+ x 0.5) (+ y 0.5))
 				   scale)
 			       translate))
@@ -191,7 +192,8 @@
 		  (for sb = (make-instance 'edge-point))
 		  (for real-sign = (advance-to spanner (vx2 p)))
 
-		  (format t "[generate-msdf] real-sign: ~a, p: ~4$, ~4$~%" real-sign (vx2 p) (vy2 p))
+		  (when *debug-generate-msdf*
+		    (format t "[generate-msdf] real-sign: ~a, p: ~4$, ~4$~%" real-sign (vx2 p) (vy2 p)))
 		  
 		  (iter (for contour in-vector (contours shape))
 			(for r = (make-instance 'edge-point))
@@ -199,26 +201,31 @@
 			(for b = (make-instance 'edge-point))
 			(for ii = 0)
 
-			(format t " [generate-msdf] length edges: ~a~%" (length (edges contour)))
+			(when *debug-generate-msdf*
+			  (format t " [generate-msdf] length edges: ~a~%" (length (edges contour))))
+			
 			(iter (for edge in-vector (edges contour))
 			      ;; signed-distance - in edges
 			      ;; fix nvunit -> vunit
 
-			      (format t " [generate-msdf] -----------------~%")
+			      (when *debug-generate-msdf*
+				(format t " [generate-msdf] -----------------~%"))
 			      
 			      (multiple-value-bind (distance param) (signed-distance edge p)
 
-				(format t "  [generateMSDF][e#~a] ~a~%" ii edge)
-				(format t "  [generateMSDF][e#~a] dist: ~4$, dot: ~4$~%"
-					ii
-					(distance distance)
-					(dot distance))
-				(format t "                       param: ~4$~%"
-					param)
-				
-				(when (= ii 10)
-				  (format t "  [generateMSDF][e#~a] color edge: ~a, logand green: ~a~%"
-					  ii (color edge) (logand (color edge) +green+)))
+				(when *debug-generate-msdf*
+				  (format t "  [generateMSDF][e#~a] ~a~%" ii edge)
+				  (format t "  [generateMSDF][e#~a] dist: ~4$, dot: ~4$~%"
+					  ii
+					  (distance distance)
+					  (dot distance))
+				  (format t "                       param: ~4$~%"
+					  param))
+
+				(when *debug-generate-msdf*
+				  (when (= ii 10)
+				    (format t "  [generateMSDF][e#~a] color edge: ~a, logand green: ~a~%"
+					    ii (color edge) (logand (color edge) +green+))))
 				
 				(when (and (not (= (logand (color edge) +red+) 0))
 					   (sd< distance (min-distance r)))
@@ -236,28 +243,29 @@
 				  (setf (near-edge b) edge)
 				  (setf (near-param b) param))
 
-
-				(format t "  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
-					ii
-					(if (< (distance (min-distance r)) 0.0)
-					    nil
-					    (distance (min-distance r)))
-					(dot (min-distance r)))
-				(format t "  [generateMSDF][e#~a] g dist, dot: ~4$, ~4$~%"
-					ii
-					(if (< (distance (min-distance g)) 0.0)
-					    nil
-					    (distance (min-distance g)))
-					(dot (min-distance g)))
-				(format t "  [generateMSDF][e#~a] b dist, dot: ~4$, ~4$~%"
-					ii
-					(if (< (distance (min-distance b)) 0.0)
-					    nil
-					    (distance (min-distance b)))
-					(dot (min-distance b)))
+				(when *debug-generate-msdf*
+				  (format t "  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
+					  ii
+					  (if (< (distance (min-distance r)) 0.0)
+					      nil
+					      (distance (min-distance r)))
+					  (dot (min-distance r)))
+				  (format t "  [generateMSDF][e#~a] g dist, dot: ~4$, ~4$~%"
+					  ii
+					  (if (< (distance (min-distance g)) 0.0)
+					      nil
+					      (distance (min-distance g)))
+					  (dot (min-distance g)))
+				  (format t "  [generateMSDF][e#~a] b dist, dot: ~4$, ~4$~%"
+					  ii
+					  (if (< (distance (min-distance b)) 0.0)
+					      nil
+					      (distance (min-distance b)))
+					  (dot (min-distance b))))
 
 				;; 10
-				(when (= ii -1) (sb-ext:exit))
+				(when *debug-generate-msdf*
+				  (when (= ii -1) (sb-ext:exit)))
 				(incf ii)
 
 				t))
@@ -271,12 +279,6 @@
 			(when (sd< (min-distance b)
 				   (min-distance sb))
 			  (setf sb b)))
-
-		  ;; (when nil
-		  ;;   (when (and (= x 11) (= row 0)) (sb-ext:exit)))
-		  
-		  ;; implement other crossing functions then signed-distance functions
-		  ;; (error "BREAKPOINT")
 		  
 		  (when (near-edge sr)
 		    (distance-to-pseudo-distance (near-edge sr) (min-distance sr) p (near-param sr)))
@@ -284,9 +286,6 @@
 		    (distance-to-pseudo-distance (near-edge sg) (min-distance sg) p (near-param sg)))
 		  (when (near-edge sb)
 		    (distance-to-pseudo-distance (near-edge sb) (min-distance sb) p (near-param sb)))
-
-		  ;; (format t "[generateMSDF] g param: ~4$~%" (near-param sg))
-		  ;; (format t "[generateMSDF] dist, dot: ~4$, ~4$~%" (distance (min-distance sg)) (dot (min-distance sg)))
 		  
 		  (let* ((dr (distance (min-distance sr)))
 			 (dg (distance (min-distance sg)))
@@ -297,8 +296,9 @@
 		    ;; Note: Use signbit() not sign() here because we need to know -0 case.
 		    ;; int medSign = signbit(med) ? -1 : 1;
 
-		    ;; (format t "[generateMSDF] d*: ~$, ~$, ~$~%" dr dg db)
-		    ;; (format t "[generateMSDF] med, med-sign: ~$, ~a~%" med med-sign)
+		    (when *debug-generate-msdf*
+		      (format t "[generateMSDF] d*: ~$, ~$, ~$~%" dr dg db)
+		      (format t "[generateMSDF] med, med-sign: ~$, ~a~%" med med-sign))
 		    
 		    (when (/= med-sign real-sign)
 		      (setf dr (- dr))
@@ -328,9 +328,6 @@
 	 (let* ((dir (vunit (direction edge 0)))
 		(aq (v- origin (point edge 0)))
 		(ts (dot-product aq dir)))
-
-	   ;; (format t "[param<0] (~4$, ~4$), (~4$, ~4$), ~4$~%" (vx2 dir) (vy2 dir) (vx2 aq) (vy2 aq) ts)
-	   
 	   (when (< ts 0)
 	     (let ((pseudo-distance (cross-product aq dir)))
 	       (when (<= (abs pseudo-distance) (abs (distance distance)))
@@ -345,30 +342,3 @@
 	       (when (<= (abs pseudo-distance) (abs (distance distance)))
 		 (setf (distance distance) pseudo-distance)
 		 (setf (dot distance) 0))))))))
-
-
-;; void EdgeSegment::distanceToPseudoDistance(SignedDistance &distance, Point2 origin, double param) const {
-;;     if (param < 0) {
-;;         Vector2 dir = direction(0).normalize();
-;;         Vector2 aq = origin-point(0);
-;;         double ts = dotProduct(aq, dir);
-;;         if (ts < 0) {
-;;             double pseudoDistance = crossProduct(aq, dir);
-;;             if (fabs(pseudoDistance) <= fabs(distance.distance)) {
-;;                 distance.distance = pseudoDistance;
-;;                 distance.dot = 0;
-;;             }
-;;         }
-;;     } else if (param > 1) {
-;;         Vector2 dir = direction(1).normalize();
-;;         Vector2 bq = origin-point(1);
-;;         double ts = dotProduct(bq, dir);
-;;         if (ts > 0) {
-;;             double pseudoDistance = crossProduct(bq, dir);
-;;             if (fabs(pseudoDistance) <= fabs(distance.distance)) {
-;;                 distance.distance = pseudoDistance;
-;;                 distance.dot = 0;
-;;             }
-;;         }
-;;     }
-;; }

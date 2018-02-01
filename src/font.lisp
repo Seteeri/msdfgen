@@ -31,6 +31,7 @@
 (defparameter *debug-split-in-thirds* nil)
 (defparameter *debug-advance-to* nil)
 (defparameter *debug-collect-crossings* nil)
+(defparameter *debug-generate-msdf* nil)
 
 (defun main ()
   ;; Shape shape;
