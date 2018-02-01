@@ -189,14 +189,12 @@
       (format t "    [quad:sd] c = ~a~%" c)
       (format t "    [quad:sd] min-distance = ~a~%" min-distance)
       (format t "    [quad:sd] param = ~a~%" param))
-
-;;     double minDistance = nonZeroSign(crossProduct(ab, qa))*qa.length(); // distance from A
-;;     param = -dotProduct(qa, ab)/dotProduct(ab, ab);
     
     (let ((distance (* (non-zero-sign (cross-product ab qa))
 		       (vlength (v- (aref points 2) origin)))))
       (when (< (abs distance) (abs min-distance))
-	(format t "    [quad:sd] min-distance/param change~%")
+	(when *debug-conic-signed-distance*
+	  (format t "    [quad:sd] min-distance/param change~%"))
 	(setf min-distance distance)
 	(setf param (/ (dot-product (v- origin (aref points 1)) (v- (aref points 2) (aref points 1)))
 		       (dot-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) (aref points 1)))))))
@@ -214,7 +212,8 @@
 		     (distance (* (non-zero-sign (cross-product (v- (aref points 2) (aref points 0)) (v- endpoint origin)))
 				  (vlength (v- endpoint origin)))))
 		(when (<= (abs distance) (abs min-distance))
-		  (format t "    [quad:sd] min-distance/param change~%")
+		  (when *debug-conic-signed-distance*
+		    (format t "    [quad:sd] min-distance/param change~%"))
 		  (setf min-distance distance)
 		  (setf param x))))))
 
@@ -240,54 +239,3 @@
 							      :dot (abs (dot-product (vunit (v- (aref points 2) (aref points 1)))
 										     (vunit (v- (aref points 2) origin)))))
 					       param))))))
-
-
-;;         return SignedDistance(minDistance, fabs(dotProduct( (p[2]-p[1]).normalize(),
-;;                                                             (p[2]-origin).normalize() )));
-
-;; SignedDistance QuadraticSegment::signedDistance(Point2 origin, double &param) const {
-;;     Vector2 qa = p[0]-origin;
-;;     Vector2 ab = p[1]-p[0];
-;;     Vector2 br = p[0]+p[2]-p[1]-p[1];
-;;     double a = dotProduct(br, br);
-;;     double b = 3*dotProduct(ab, br);
-;;     double c = 2*dotProduct(ab, ab)+dotProduct(qa, br);
-;;     double d = dotProduct(qa, ab);
-;;     double t[3];
-;;     int solutions = solveCubic(t, a, b, c, d);
-
-;;     double minDistance = nonZeroSign(crossProduct(ab, qa))*qa.length(); // distance from A
-;;     param = -dotProduct(qa, ab)/dotProduct(ab, ab);
-        
-;;     {
-;;         double distance = nonZeroSign(crossProduct(p[2]-p[1], p[2]-origin))*(p[2]-origin).length(); // distance from B
-;;         if (fabs(distance) < fabs(minDistance)) {
-;;             minDistance = distance;
-;;             param = dotProduct(origin-p[1], p[2]-p[1])/dotProduct(p[2]-p[1], p[2]-p[1]);
-;;         }
-;;     }
-
-;;     for (int i = 0; i < solutions; ++i) {
-;;         if (t[i] > 0 && t[i] < 1) {
-;;             Point2 endpoint = p[0]+2*t[i]*ab+t[i]*t[i]*br;
-;;             double distance = nonZeroSign(crossProduct(p[2]-p[0], endpoint-origin))*(endpoint-origin).length();
-;;             if (fabs(distance) <= fabs(minDistance)) {
-;;                 minDistance = distance;
-;;                 param = t[i];
-;;             }
-;;         }
-;;     }
-
-;;     if (param >= 0 && param <= 1)
-;;     {
-;;         return SignedDistance(minDistance, 0);
-;;     }
-;;     if (param < .5)
-;;     {
-;;         return SignedDistance(minDistance, fabs(dotProduct(ab.normalize(), qa.normalize())));
-;;     }
-;;     else
-;;     {
-;;         return SignedDistance(minDistance, fabs(dotProduct((p[2]-p[1]).normalize(), (p[2]-origin).normalize())));
-;;     }
-;; }

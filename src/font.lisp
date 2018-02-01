@@ -24,11 +24,12 @@
 
 (defparameter *debug-outline-decompose* nil)
 (defparameter *debug-bounds* nil)
-(defparameter *debug-conic-signed-distance* t)
-(defparameter *debug-conic-signed-distance-solve* t)
+(defparameter *debug-conic-signed-distance* nil)
+(defparameter *debug-conic-signed-distance-solve* nil)
 
-(defparameter *debug-edge-coloring-simple* t)
+(defparameter *debug-edge-coloring-simple* nil)
 (defparameter *debug-split-in-thirds* nil)
+(defparameter *debug-advance-to* nil)
 
 (defun main ()
   ;; Shape shape;

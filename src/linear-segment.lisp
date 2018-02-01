@@ -113,10 +113,10 @@
   ;; 	  (< (vy2 r) (min (vy2 p0) (vy2 p1)))
   ;; 	  (>= (vy2 r) (max (vy2 p0) (vy2 p1)))
   ;; 	  (>= (vx2 r) (max (vx2 p0) (vx2 p1))))
-  (format t "[cross-line] pts: ~a, ~a~%"
-	  ;r
-	  p0
-	  p1)
+  ;; (format t "[cross-line] pts: ~a, ~a~%"
+  ;; 	  ;r
+  ;; 	  p0
+  ;; 	  p1)
   
   (when (< (vy2 r) (min (vy2 p0) (vy2 p1)))
     ;; (format t "[cross-line] 1~%")
