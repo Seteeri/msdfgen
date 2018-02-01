@@ -34,17 +34,20 @@
     (setf (fill-pointer (crossings ws)) 0)
     (adjust-array (crossings ws) 0)
 
-    (format t "[collect-crossings] contours: ~a~%" (length (contours shape)))
+    (when *debug-collect-crossings*
+      (format t "[collect-crossings] contours: ~a~%" (length (contours shape))))
     
     (iter (for contour in-vector (contours shape))
-	  (format t "[collect-crossings] ~a, edges: ~a~%" contour (length (edges contour)))
+	  (when *debug-collect-crossings*
+	    (format t "[collect-crossings] ~a, edges: ~a~%" contour (length (edges contour))))
 	  (iter (for edge in-vector (edges contour))
 		;; (format t "[collect-crossings] ~a~%" edge)
 		(cross-points edge point (lambda (point winding)
 					   (vector-push-extend (list (vx2 point) winding)
 							       (crossings ws))))))
 
-    (format t "[collect-crossings] crossings size: ~a~%" (length (crossings ws)))
+    (when *debug-collect-crossings*
+      (format t "[collect-crossings] crossings size: ~a~%" (length (crossings ws))))
     
     ;; Make sure we've collected them all in increasing x order.
     (sort (crossings ws) (lambda (a b)

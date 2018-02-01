@@ -30,6 +30,7 @@
 (defparameter *debug-edge-coloring-simple* nil)
 (defparameter *debug-split-in-thirds* nil)
 (defparameter *debug-advance-to* nil)
+(defparameter *debug-collect-crossings* nil)
 
 (defun main ()
   ;; Shape shape;
