@@ -17,6 +17,12 @@
     :initform nil
     :documentation "")))
 
+(defmethod initialize-instance :after ((edge cubic-segment) &key p0 p1 p2 p3)
+  (with-slots (points) edge
+    (setf (aref points 0) p0)
+    (setf (aref points 1) p1)
+    (setf (aref points 2) p2)
+    (setf (aref points 3) p3)))
 
 ;; void CubicSegment::splitInThirds(EdgeSegment *&part1, EdgeSegment *&part2, EdgeSegment *&part3) const {
 ;;

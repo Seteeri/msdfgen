@@ -22,16 +22,16 @@
 (defun make-ft-vec2 (x y)
   (vec2 (/ x 64) (/ y 64)))
 
-(defparameter *debug-outline-decompose* nil)
-(defparameter *debug-bounds* nil)
-(defparameter *debug-conic-signed-distance* nil)
-(defparameter *debug-conic-signed-distance-solve* nil)
+(defparameter *debug-outline-decompose* t)
+(defparameter *debug-bounds* t)
+(defparameter *debug-conic-signed-distance* t)
+(defparameter *debug-conic-signed-distance-solve* t)
 
-(defparameter *debug-edge-coloring-simple* nil)
-(defparameter *debug-split-in-thirds* nil)
-(defparameter *debug-advance-to* nil)
-(defparameter *debug-collect-crossings* nil)
-(defparameter *debug-generate-msdf* nil)
+(defparameter *debug-edge-coloring-simple* t)
+(defparameter *debug-split-in-thirds* t)
+(defparameter *debug-advance-to* t)
+(defparameter *debug-collect-crossings* t)    ;; (iter (for code from 32 to 120)
+(defparameter *debug-generate-msdf* t)
 
 (defun main ()
 
@@ -41,7 +41,8 @@
     ;; check face if null
   
     ;; printable asii printable characters range including extended
-    (iter (for code from 32 to 120)
+    ;; (iter (for code from 32 to 120)
+    (let ((code 107))
 	  
 	  (let* ((width 32)
 		 (height 32)
@@ -149,9 +150,9 @@
      (progn
        (let* ((to (make-ft-vec2 (freetype2-types:ft-vector-x p)
 				(freetype2-types:ft-vector-y p)))
-	      (edge (make-instance 'linear-segment)))
-	 (vector-push (pos *ft-context*) (points edge))
-	 (vector-push to (points edge))
+	      (edge (make-instance 'linear-segment
+				   :p0 (pos *ft-context*)
+				   :p1 to)))
 	 (when *debug-outline-decompose*
 	   (format t "[lineto] ~a:~%" edge)
 	   (format t "         ~a~%" to)
@@ -164,10 +165,10 @@
 				     (freetype2-types:ft-vector-y p)))
 	      (to (make-ft-vec2 (freetype2-types:ft-vector-x p2)
 				(freetype2-types:ft-vector-y p2)))
-	      (edge (make-instance 'quadratic-segment)))
-	 (vector-push (pos *ft-context*) (points edge))
-	 (vector-push control (points edge))
-	 (vector-push to (points edge))
+	      (edge (make-instance 'quadratic-segment
+				   :p0 (pos *ft-context*)
+				   :p1 control
+				   :p2 to)))
 	 (when *debug-outline-decompose*
 	   (format t "[conicto] ~a:~%" edge)
 	   (format t "          ~a | ~a, ~a~%" (pos *ft-context*) control to)
@@ -184,11 +185,11 @@
 				       (freetype2-types:ft-vector-y p2)))
 	      (to (make-ft-vec2 (freetype2-types:ft-vector-x p3)
 				(freetype2-types:ft-vector-y p3)))
-	      (edge (make-instance 'cubic-segment)))
-	 (vector-push (pos *ft-context*) (points edge))
-	 (vector-push control-1 (points edge))
-	 (vector-push control-2 (points edge))
-	 (vector-push to (points edge))
+	      (edge (make-instance 'cubic-segment
+				   :p0 (pos *ft-context*)
+				   :p1 control-1
+				   :p2 control-2
+				   :p3 to)))
 	 (when *debug-outline-decompose*
 	   (format t "[cubicto] ~a:~%" edge)
 	   (format t "          ~a | ~a, ~a, ~a~%" (pos *ft-context*) control-1 control-2 to))

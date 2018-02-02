@@ -17,7 +17,14 @@
     :initform nil
     :documentation "")))
 
-;; note, init does additional calculation
+(defmethod initialize-instance :after ((edge quadratic-segment) &key p0 p1 p2)
+  (with-slots (points) edge
+    (setf (aref points 0) p0)
+    (setf (aref points 1) p1)
+    (setf (aref points 2) p2)
+    (when (or (v= p1 p0)
+	      (v= p1 p2))
+      (setf (aref points 1) (v* (v+ p0 p2) 0.5)))))
 
 ;; void QuadraticSegment::splitInThirds(EdgeSegment *&part1, EdgeSegment *&part2, EdgeSegment *&part3) const {
 ;;     part1 = new QuadraticSegment(p[0], mix(p[0], p[1], 1/3.), point(1/3.), color);

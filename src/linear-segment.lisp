@@ -17,6 +17,11 @@
     :initform nil
     :documentation "")))
 
+(defmethod initialize-instance :after ((edge linear-segment) &key p0 p1)
+  (with-slots (points) edge
+    (setf (aref points 0) p0)
+    (setf (aref points 1) p1)))
+
 ;; void LinearSegment::splitInThirds(EdgeSegment *&part1, EdgeSegment *&part2, EdgeSegment *&part3) const {
 ;;     part1 = new LinearSegment(p[0], point(1/3.), color);
 ;;     part2 = new LinearSegment(point(1/3.), point(2/3.), color);
