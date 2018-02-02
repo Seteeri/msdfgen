@@ -156,6 +156,16 @@
 	 (param (/ (dot-product aq ab) (dot-product ab ab)))
 	 (eq (v- (aref points (if (> param 0.5) 1 0)) origin))
 	 (end-point-distance (vlength eq)))
+
+    (when *debug-linear-signed-distance*
+      (format t "    [lin:sd] p0 = ~a~%" (aref points 0))
+      (format t "    [lin:sd] p1 = ~a~%" (aref points 1))
+      (format t "    [lin:sd] aq = ~a~%" aq)
+      (format t "    [lin:sd] ab = ~a~%" ab)
+      (format t "    [lin:sd] param = ~a~%" param)
+      (format t "    [lin:sd] eq = ~a~%" eq)
+      (format t "    [lin:sd] end-point-distance = ~a~%" end-point-distance))
+
     (when (and (> param 0)
 	       (< param 1))
       (let ((ortho-distance (dot-product (get-orthonormal ab nil) aq)))

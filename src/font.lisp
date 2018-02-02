@@ -26,6 +26,7 @@
 (defparameter *debug-bounds* t)
 (defparameter *debug-conic-signed-distance* t)
 (defparameter *debug-conic-signed-distance-solve* t)
+(defparameter *debug-linear-signed-distance* t)
 
 (defparameter *debug-edge-coloring-simple* t)
 (defparameter *debug-split-in-thirds* t)

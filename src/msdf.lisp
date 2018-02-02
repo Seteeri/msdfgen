@@ -279,6 +279,10 @@
 			(when (sd< (min-distance b)
 				   (min-distance sb))
 			  (setf sb b)))
+
+		  (when t
+		    (when (and (= x 16) (= row 8))
+		      (sb-ext:exit)))
 		  
 		  (when (near-edge sr)
 		    (distance-to-pseudo-distance (near-edge sr) (min-distance sr) p (near-param sr)))
