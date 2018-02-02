@@ -61,6 +61,7 @@
 ;;              color);
 ;; }
 (defmethod split-in-thirds ((edge cubic-segment))
+  (error "TODO: cubic-segment:split-in-thirds")
   (with-slots (points color) edge
     (let ((p0 (aref points 0))
 	  (p1 (aref points 1))
