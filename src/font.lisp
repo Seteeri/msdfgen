@@ -34,71 +34,49 @@
 (defparameter *debug-generate-msdf* nil)
 
 (defun main ()
-  ;; Shape shape;
-  ;; if (loadGlyph(shape, font, 'A')) {
-  ;;   shape.normalize();
-  ;;   //                      max. angle
-  ;;   edgeColoringSimple(shape, 3.0);
-  ;;   //           image width, height
-  ;;   Bitmap<FloatRGB> msdf(32, 32);
-  ;;   //                     range, scale, translation
-  ;;   generateMSDF(msdf, shape, 4.0, 1.0, Vector2(4.0, 4.0));
-  ;;   savePng(msdf, "output.png");
-  ;; }
+
+  ;; (format t "~a~%" (freetype2:check-font-file "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf"))
   
   (let ((face (freetype2:new-face "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf")))
     ;; check face if null
-
-    ;; (format t "~a~%" (freetype2:check-font-file "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf"))
-    
-    (let ((shape (load-glyph face #\a)))
-      
-      (normalize (contours shape))
-      
-      (edge-coloring-simple shape 3.0)
-      
-      ;; bitmap... (msdf 32 32)
-      ;; each pixel contains RGB floats
-      (let ((bitmap (make-array (* 32 32) :fill-pointer 0)))
-	(iter (for i from 0 below (* 32 32))
-	      (vector-push (make-array 3 :fill-pointer 0)
-			   bitmap))
-	
-	(generate-msdf bitmap
-		       shape
-		       4.0 ; range
-		       (vec2 1.0 1.0) ; scale
-		       (vec2 4.0 4.0)) ; translation
-
-					; 8,14
-	;; (sb-ext:exit)
-
-	;; Write output
-	(when t
-	  (with-open-file (out #p"output.txt"
-			       :direction :output
-			       :if-does-not-exist :create
-			       :if-exists :supersede)
-	    (iter (for y from 31 downto 0) ; height-1
-		  (iter (for x from 0 below 32) ; width
-			(let ((px (get-pixel bitmap x y 32)))
-			  (write-line (format nil "(~a, ~a) ~5$ ~5$ ~5$" x y (aref px 0) (aref px 1) (aref px 2))
-				      out))))))
-	
-	;; (when nil
-	;;   (iter (for y from 31 downto 0) ; height-1
-	;;  (iter (for x from 0 below 32) ; width
-	;;        (let* ((px (get-pixel bitmap x y 32)))
-	;;      (setf (aref px 0) (clamp (truncate (* (aref px 0) #x100)) 0 #xff))
-	;;      (setf (aref px 1) (clamp (truncate (* (aref px 1) #x100)) 0 #xff))
-	;;      (setf (aref px 2) (clamp (truncate (* (aref px 2) #x100)) 0 #xff))
-	;;      (format t "(~a, ~a): ~a, ~a, ~a ~%" x y (aref px 0) (aref px 1) (aref px 2))))))
-
-	;; (sb-ext:exit)
-	
-	(write-rgb-buffer-to-ppm-file "/home/user/output.ppm" bitmap 32 32))))
   
-  (format t "DONE~%")
+    ;; printable asii printable characters range including extended
+    (iter (for code from 32 to 120)
+	  
+	  (let* ((width 32)
+		 (height 32)
+		 (shape (load-glyph face code))
+		 (bitmap (make-array (* width height) :fill-pointer 0)))
+	    
+	    (normalize (contours shape))
+	    
+	    (edge-coloring-simple shape 3.0)
+	    
+	    (iter (for i from 0 below (* width height))
+		  (vector-push (make-array 3 :fill-pointer 0) bitmap))
+	    
+	    (generate-msdf bitmap
+			   shape
+			   4.0 ; range
+			   (vec2 1.0 1.0) ; scale
+			   (vec2 4.0 4.0)) ; translation
+
+	    ;; Write RGB float output
+	    (when t
+	      (with-open-file (out #p"/home/user/font-gen/sdf/output.txt"
+				   :direction :output
+				   :if-does-not-exist :create
+				   :if-exists :supersede)
+		(iter (for y from (- height 1) downto 0)
+		      (iter (for x from 0 below width)
+			    (let ((px (get-pixel bitmap x y width)))
+			      (write-line (format nil "(~a, ~a) ~5$ ~5$ ~5$" x y (aref px 0) (aref px 1) (aref px 2))
+					  out))))))
+	    
+	    (write-rgb-buffer-to-ppm-file (format nil "/home/user/font-gen/sdf/~a.ppm" code)
+					  bitmap width height)
+	    (format t "Wrote ~a~%" (format nil "/home/user/font-gen/sdf/~a.ppm" code)))))
+  
   (sb-ext:exit))
 
 (defun write-rgb-buffer-to-ppm-file (filename bitmap width height)
@@ -131,37 +109,28 @@
 		       1) ; FT_LOAD_NO_SCALE
   ;; check chr
 
-  (let* ((output (make-instance 'shape))
-	 (context (make-instance 'ft-context :shape output)))
-    
-    ;; return advance if requested
-    ;; font->face->glyph->advance.x/64
+  (let* ((shape (make-instance 'shape))
+	 (context (make-instance 'ft-context :shape shape)))
 
-    ;; contours is a list
-    ;; (clear (contours shape))
-    ;; (setf (inverse-y-axis output) nil)
+    ;; make function for this
+    (setf (fill-pointer (contours shape)) 0)
+    (adjust-array (contours shape) 0)
+
+    (setf (inverse-y-axis shape) nil)
 
     ;; do in let*
-    ;; (setf (shape context) output)
-
+    ;; (setf (shape context) shape)
     (defparameter *ft-context* context)
-
-    ;; (let* ((,outline-glyph (get-glyph ,face))
-    ;;        (,outline (ft-outlineglyph-outline ,outline-glyph)))
     
     (let* ((glyph (freetype2:get-glyph face))
 	   (outline (freetype2-types:ft-outlineglyph-outline glyph)))
       
-      ;; (format t "glyph: ~a, outline: ~a~%" glyph outline)
-      
-      ;; callbacks need access to context
-      ;; instead of pointer use a global name
-      ;; (format t "Call do-outline-decompose~%")
+      ;; pass context to callback
       (freetype2:do-outline-decompose outline
 	(op p p2 p3)
 	(handle-outline-decompose op p p2 p3)))
 
-    output))
+    shape))
 
 
 (defun handle-outline-decompose (op p p2 p3)
