@@ -22,18 +22,19 @@
 (defun make-ft-vec2 (x y)
   (vec2 (/ x 64) (/ y 64)))
 
-(defparameter *debug-outline-decompose* t)
-(defparameter *debug-bounds* t)
-(defparameter *debug-conic-signed-distance* t)
-(defparameter *debug-conic-signed-distance-solve* t)
-(defparameter *debug-linear-signed-distance* t)
+(defparameter *debug-outline-decompose* nil)
+(defparameter *debug-bounds* nil)
+(defparameter *debug-conic-signed-distance* nil)
+(defparameter *debug-conic-signed-distance-solve* nil)
+(defparameter *debug-linear-signed-distance* nil)
 
-(defparameter *debug-edge-coloring-simple* t)
-(defparameter *debug-split-in-thirds* t)
-(defparameter *debug-advance-to* t)
-(defparameter *debug-collect-crossings* t)    ;; (iter (for code from 32 to 120)
-(defparameter *debug-generate-msdf* t)
-
+(defparameter *debug-edge-coloring-simple* nil)
+(defparameter *debug-split-in-thirds* nil)
+(defparameter *debug-advance-to* nil)
+(defparameter *debug-collect-crossings* nil)
+(defparameter *debug-generate-msdf* nil)
+(defparameter *debug-correct-msdf-error* nil)
+  
 (defun main ()
 
   ;; (format t "~a~%" (freetype2:check-font-file "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf"))
@@ -42,8 +43,8 @@
     ;; check face if null
   
     ;; printable asii printable characters range including extended
-    ;; (iter (for code from 32 to 120)
-    (let ((code 107))
+    (iter (for code from 32 to 120)
+    ;; (let ((code 107))
 	  
 	  (let* ((width 32)
 		 (height 32)

@@ -1,28 +1,50 @@
 (in-package :sdf)
 
-(defclass multi-distance ()
-  ((r
-    :accessor r
-    :initarg :r
-    :initform nil
-    :documentation "")
-   (g
-    :accessor g
-    :initarg :g
-    :initform nil
-    :documentation "")
-   (b
-    :accessor b
-    :initarg :b
-    :initform nil
-    :documentation "")
-   (med
-    :accessor med
-    :initarg :med
-    :initform nil
-    :documentation "")))
+;; static inline bool pixelClash(const FloatRGB &a, const FloatRGB &b, double threshold) {
+
+;; static inline bool pixelClash(const FloatRGB &a, const FloatRGB &b, double threshold) {
+;;     // Only consider pair where both are on the inside or both are on the outside
+;;     bool aIn = (a.r > .5f)+(a.g > .5f)+(a.b > .5f) >= 2;
+;;     bool bIn = (b.r > .5f)+(b.g > .5f)+(b.b > .5f) >= 2;
+;;     if (aIn != bIn) return false;
+;;     // If the change is 0 <-> 1 or 2 <-> 3 channels and not 1 <-> 1 or 2 <-> 2, it is not a clash
+;;     if ((a.r > .5f && a.g > .5f && a.b > .5f) || (a.r < .5f && a.g < .5f && a.b < .5f)
+;;         || (b.r > .5f && b.g > .5f && b.b > .5f) || (b.r < .5f && b.g < .5f && b.b < .5f))
+;;         return false;
+;;     // Find which color is which: _a, _b = the changing channels, _c = the remaining one
+;;     float aa, ab, ba, bb, ac, bc;
+;;     if ((a.r > .5f) != (b.r > .5f) && (a.r < .5f) != (b.r < .5f)) {
+;;         aa = a.r, ba = b.r;
+;;         if ((a.g > .5f) != (b.g > .5f) && (a.g < .5f) != (b.g < .5f)) {
+;;             ab = a.g, bb = b.g;
+;;             ac = a.b, bc = b.b;
+;;         } else if ((a.b > .5f) != (b.b > .5f) && (a.b < .5f) != (b.b < .5f)) {
+;;             ab = a.b, bb = b.b;
+;;             ac = a.g, bc = b.g;
+;;         } else
+;;             return false; // this should never happen
+;;     } else if ((a.g > .5f) != (b.g > .5f) && (a.g < .5f) != (b.g < .5f)
+;;         && (a.b > .5f) != (b.b > .5f) && (a.b < .5f) != (b.b < .5f)) {
+;;         aa = a.g, ba = b.g;
+;;         ab = a.b, bb = b.b;
+;;         ac = a.r, bc = b.r;
+;;     } else
+;;         return false;
+;;     // Find if the channels are in fact discontinuous
+;;     return (fabsf(aa-ba) >= threshold)
+;;         && (fabsf(ab-bb) >= threshold)
+;;         && fabsf(ac-.5f) >= fabsf(bc-.5f); // Out of the pair, only flag the pixel farther from a shape edge
+;; }
+
+(defconstant +pixel-red+ 0)
+(defconstant +pixel-green+ 1)
+(defconstant +pixel-blue+ 0)
 
 (defun pixel-clash (a b threshold)
+
+  (when *debug-correct-msdf-error*
+    (format t "~%b: ~a~%" b))
+
   (let ((a-in (>= (+ (if (> (aref a 0) 0.5) 1 0)
 		     (if (> (aref a 1) 0.5) 1 0)
 		     (if (> (aref a 2) 0.5) 1 0))
@@ -30,11 +52,12 @@
 	(b-in (>= (+ (if (> (aref b 0) 0.5) 1 0)
 		     (if (> (aref b 1) 0.5) 1 0)
 		     (if (> (aref b 2) 0.5) 1 0))
-		  2)))
+		  2))
+	(pr t))
 
     (when (not (eq a-in b-in))
       (return-from pixel-clash))
-
+    
     ;; If the change is 0 <-> 1 or 2 <-> 3 channels and not 1 <-> 1 or 2 <-> 2, it is not a clash
     (when (or (and (> (aref a 0) 0.5) (> (aref a 1) 0.5) (> (aref a 2) 0.5))
 	      (and (< (aref a 0) 0.5) (< (aref a 1) 0.5) (< (aref a 2) 0.5))
@@ -42,7 +65,6 @@
 	      (and (< (aref b 0) 0.5) (< (aref b 1) 0.5) (< (aref b 2) 0.5)))
       (return-from pixel-clash))
 
-    
     ;; If the change is 0 <-> 1 or 2 <-> 3 channels and not 1 <-> 1 or 2 <-> 2, it is not a clash
     ;;     if (   (a.r > .5f && a.g > .5f && a.b > .5f)
     ;;         || (a.r < .5f && a.g < .5f && a.b < .5f)
@@ -67,7 +89,7 @@
       (cond ((and (not (eq (> (aref a 0) 0.5) (> (aref b 0) 0.5)))
 		  (not (eq (< (aref a 0) 0.5) (< (aref b 0) 0.5))))
 	     (setf aa (aref a 0))
-	     (setf bb (aref b 0))
+	     (setf ba (aref b 0))
 	     (cond ((and (not (eq (> (aref a 1) 0.5) (> (aref b 1) 0.5)))
 			 (not (eq (< (aref a 1) 0.5) (< (aref b 1) 0.5))))
 		    (setf ab (aref a 1))
@@ -96,39 +118,45 @@
 	    (t
 	     (return-from pixel-clash)))
 
-      (return-from pixel-clash (and (>= (abs (- aa ba)) threshold)
-				    (>= (abs (- ab bb)) threshold)
-				    (>= (abs (- ac 0.5)) (abs (- bc 0.5))))))))
+;;     // Find if the channels are in fact discontinuous
+      ;;     return (fabsf(aa-ba) >= threshold) &&
+      ;;            (fabsf(ab-bb) >= threshold)
+      ;;          && fabsf(ac-.5f) >= fabsf(bc-.5f); // Out of the pair, only flag the pixel farther from a shape edge
 
-;; void msdfErrorCorrection(Bitmap<FloatRGB> &output, const Vector2 &threshold) {
-;;     std::vector<std::pair<int, int> > clashes;
-;;     int w = output.width(), h = output.height();
-;;     for (int y = 0; y < h; ++y)
-;;         for (int x = 0; x < w; ++x) {
-;;             if (   (x > 0 && pixelClash(output(x, y), output(x-1, y), threshold.x))
-;;                 || (x < w-1 && pixelClash(output(x, y), output(x+1, y), threshold.x))
-;;                 || (y > 0 && pixelClash(output(x, y), output(x, y-1), threshold.y))
-;;                 || (y < h-1 && pixelClash(output(x, y), output(x, y+1), threshold.y)))
-;;                 clashes.push_back(std::make_pair(x, y));
-;;         }
-;;     for (std::vector<std::pair<int, int> >::const_iterator clash = clashes.begin(); clash != clashes.end(); ++clash) {
-;;         FloatRGB &pixel = output(clash->first, clash->second);
-;;         float med = median(pixel.r, pixel.g, pixel.b);
-;;         pixel.r = med, pixel.g = med, pixel.b = med;
-;;     }
-;; }
+      (when *debug-correct-msdf-error*
+	(format t "    [p-c] threshold = ~a~%" threshold)
+	(format t "    [p-c] aa = ~a~%" aa)
+	(format t "    [p-c] ba = ~a~%" ba)
+	(format t "    [p-c] ab = ~a~%" ab)
+	(format t "    [p-c] bb = ~a~%" bb)
+	(format t "    [p-c] ac = ~a~%" ac)
+	(format t "    [p-c] bc = ~a~%" bc))
+      
+      (let ((r (and (>= (abs (- aa ba)) threshold)
+		    (>= (abs (- ab bb)) threshold)
+		    (>= (abs (- ac 0.5)) (abs (- bc 0.5))))))
+	(when *debug-correct-msdf-error*
+	  (when pr (format t "5. ~a, ~a, r=~a~%" a-in b-in r)))
+	(return-from pixel-clash r)))))
+
 (defun correct-msdf-error (output threshold)
   (let ((clashes (make-array 0 :fill-pointer 0 :adjustable t))
 	(w 32)
 	(h 32))
     (iter (for y from 0 below h)
 	  (iter (for x from 0 below w)
+		(when *debug-correct-msdf-error*
+		  (format t "[c-m-e] (~a, ~a) -----------------~%" x y))
 		(when (or (and (> x 0) (pixel-clash (get-pixel output x y w) (get-pixel output (- x 1) y w) (vx2 threshold)))
 			  (and (< x (- w 1)) (pixel-clash (get-pixel output x y w) (get-pixel output (+ x 1) y w) (vx2 threshold)))
 			  (and (> y 0) (pixel-clash (get-pixel output x y w) (get-pixel output x (- y 1) w) (vy2 threshold)))
 			  (and (< y (- h 1)) (pixel-clash (get-pixel output x y w) (get-pixel output x (+ y 1) w) (vy2 threshold))))
+		  (when *debug-correct-msdf-error*
+		    (format t "[c-m-e] push: ~a~%" (list x y)))
 		  (vector-push-extend (make-array 2 :initial-contents (list x y))
-				      clashes))))
+				      clashes))
+		(when *debug-correct-msdf-error*
+		  (when (and (= x 12) (= y 11)) (sb-ext:exit)))))
     (format t "[correct-msdf-error] clashes length: ~a~%" (length clashes))
     (iter (for clash in-vector clashes)
 	  (let* ((pixel (get-pixel output (aref clash 0) (aref clash 1) w))
@@ -174,7 +202,7 @@
 
 	    (multiple-value-bind (bound-left bound-bottom bound-right bound-top) (bounds shape 0.0 0.0 0.0 0.0)
 	      (when *debug-generate-msdf*
-		(format t "~%[generate-msdf] collect-crossings - y, row: ~a, ~a~%" y row))
+		(format t "~%[generate-msdf] collect-crossings: y, row: ~a, ~a~%" y row))
 	      (collect-crossings spanner
 				 shape
 				 (vec2 (- bound-left 0.5)
@@ -183,7 +211,7 @@
 	      (format t "[generate-msdf] call bounds done~%"))
 	    
 	    (iter (for x from 0 below w)
-		  (for foobar = (if *debug-generate-msdf* (format t "[generate-msdf] x: ~a~%" x) nil))
+		  (for foobar = (if *debug-generate-msdf* (format t "[generate-msdf] (x,y) = (~a,~a)~%" x row) nil))
 		  (for p = (v- (v/ (vec2 (+ x 0.5) (+ y 0.5))
 				   scale)
 			       translate))
@@ -214,18 +242,19 @@
 			      (multiple-value-bind (distance param) (signed-distance edge p)
 
 				(when *debug-generate-msdf*
-				  (format t "  [generateMSDF][e#~a] ~a~%" ii edge)
-				  (format t "  [generateMSDF][e#~a] dist: ~4$, dot: ~4$~%"
-					  ii
-					  (distance distance)
-					  (dot distance))
-				  (format t "                       param: ~4$~%"
-					  param))
+				  ;; (format t "  [generateMSDF][e#~a] ~a~%" ii edge)
+				  ;; (format t "  [generateMSDF][e#~a] dist: ~4$, dot: ~4$~%"
+				  ;; 	  ii
+				  ;; 	  (distance distance)
+				  ;; 	  (dot distance))
+				  ;; (format t "                       param: ~4$~%"
+				  ;; 	  param))
+				  )
 
 				(when *debug-generate-msdf*
-				  (when (= ii 10)
-				    (format t "  [generateMSDF][e#~a] color edge: ~a, logand green: ~a~%"
-					    ii (color edge) (logand (color edge) +green+))))
+				  ;; (format t " [generateMSDF][e#~a] color edge: ~a, logand green: ~a~%"
+				  ;; 	  ii (color edge) (logand (color edge) +green+)))
+				  )
 				
 				(when (and (not (= (logand (color edge) +red+) 0))
 					   (sd< distance (min-distance r)))
@@ -243,7 +272,7 @@
 				  (setf (near-edge b) edge)
 				  (setf (near-param b) param))
 
-				(when *debug-generate-msdf*
+				(when (and *debug-generate-msdf* t)
 				  (format t "  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
 					  ii
 					  (if (< (distance (min-distance r)) 0.0)
@@ -263,9 +292,9 @@
 					      (distance (min-distance b)))
 					  (dot (min-distance b))))
 
-				;; 10
 				(when *debug-generate-msdf*
 				  (when (= ii -1) (sb-ext:exit)))
+
 				(incf ii)
 
 				t))
@@ -279,10 +308,6 @@
 			(when (sd< (min-distance b)
 				   (min-distance sb))
 			  (setf sb b)))
-
-		  (when t
-		    (when (and (= x 16) (= row 8))
-		      (sb-ext:exit)))
 		  
 		  (when (near-edge sr)
 		    (distance-to-pseudo-distance (near-edge sr) (min-distance sr) p (near-param sr)))
@@ -290,6 +315,26 @@
 		    (distance-to-pseudo-distance (near-edge sg) (min-distance sg) p (near-param sg)))
 		  (when (near-edge sb)
 		    (distance-to-pseudo-distance (near-edge sb) (min-distance sb) p (near-param sb)))
+
+		  (when *debug-generate-msdf*
+		    (format t "  [generateMSDF][(~a,~a)] sr dist, dot: ~4$, ~4$~%"
+			    x row
+			    (if (< (distance (min-distance sr)) 0.0)
+				nil
+				(distance (min-distance sr)))
+			    (dot (min-distance sr)))
+		    (format t "  [generateMSDF][(~a,~a)] sg dist, dot: ~4$, ~4$~%"
+			    x row
+			    (if (< (distance (min-distance sg)) 0.0)
+				nil
+				(distance (min-distance sg)))
+			    (dot (min-distance sg)))
+		    (format t "  [generateMSDF][(~a,~a)] sb dist, dot: ~4$, ~4$~%"
+			    x row
+			    (if (< (distance (min-distance sb)) 0.0)
+				nil
+				(distance (min-distance sb)))
+			    (dot (min-distance sb))))
 		  
 		  (let* ((dr (distance (min-distance sr)))
 			 (dg (distance (min-distance sg)))
@@ -316,14 +361,18 @@
 		      (vector-push r px)
 		      (vector-push g px)
 		      (vector-push b px)
-		      
-		      ;; (format t "[generate-msdf] (~a, ~a): ~a, ~a, ~a~%" x row r g b)
-		      ;; (sb-ext:exit)
+
+		      (when *debug-generate-msdf*
+			(format t "[generate-msdf] (~a,~a): ~a, ~a, ~a~%" x row r g b))
+
+		      ;; (when t
+		      ;; 	(when (and (= x 12) (= row 11))
+		      ;; 	  (sb-ext:exit)))
 		      
 		      t))))))
   
   (when (> edge-threshold 0)
-    (correct-msdf-error output (v/ (v* scale range) edge-threshold))))
+    (correct-msdf-error output (v/ edge-threshold (v* scale range)))))
 
 
 (defun distance-to-pseudo-distance (edge distance origin param)
