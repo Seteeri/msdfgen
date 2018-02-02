@@ -235,6 +235,7 @@
 (defconstant +msdfgen-cubic-search-steps+ 4)
 
 (defmethod signed-distance ((edge cubic-segment) origin)
+  (error "TODO: cubic-segment:signed-distance")
   (let* ((points (points edge))
 	 (qa (v- (aref points 0) origin))
 	 (ab (v- (aref points 1) (aref points 0)))
