@@ -24,6 +24,7 @@
 
 (defparameter *debug-outline-decompose* nil)
 (defparameter *debug-bounds* nil)
+
 (defparameter *debug-conic-signed-distance* nil)
 (defparameter *debug-conic-signed-distance-solve* nil)
 (defparameter *debug-linear-signed-distance* nil)
@@ -43,8 +44,8 @@
     ;; check face if null
   
     ;; printable asii printable characters range including extended
-    ;; (iter (for code from 32 to 255)
-    (let ((code 123))
+    (iter (for code from 32 to 255)
+    ;; (let ((code 164))
 	  
 	  (let* ((width 32)
 		 (height 32)

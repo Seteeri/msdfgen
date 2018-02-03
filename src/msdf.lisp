@@ -1,80 +1,41 @@
 (in-package :sdf)
 
-;; static inline bool pixelClash(const FloatRGB &a, const FloatRGB &b, double threshold) {
-
-;; static inline bool pixelClash(const FloatRGB &a, const FloatRGB &b, double threshold) {
-;;     // Only consider pair where both are on the inside or both are on the outside
-;;     bool aIn = (a.r > .5f)+(a.g > .5f)+(a.b > .5f) >= 2;
-;;     bool bIn = (b.r > .5f)+(b.g > .5f)+(b.b > .5f) >= 2;
-;;     if (aIn != bIn) return false;
-;;     // If the change is 0 <-> 1 or 2 <-> 3 channels and not 1 <-> 1 or 2 <-> 2, it is not a clash
-;;     if ((a.r > .5f && a.g > .5f && a.b > .5f) || (a.r < .5f && a.g < .5f && a.b < .5f)
-;;         || (b.r > .5f && b.g > .5f && b.b > .5f) || (b.r < .5f && b.g < .5f && b.b < .5f))
-;;         return false;
-;;     // Find which color is which: _a, _b = the changing channels, _c = the remaining one
-;;     float aa, ab, ba, bb, ac, bc;
-;;     if ((a.r > .5f) != (b.r > .5f) && (a.r < .5f) != (b.r < .5f)) {
-;;         aa = a.r, ba = b.r;
-;;         if ((a.g > .5f) != (b.g > .5f) && (a.g < .5f) != (b.g < .5f)) {
-;;             ab = a.g, bb = b.g;
-;;             ac = a.b, bc = b.b;
-;;         } else if ((a.b > .5f) != (b.b > .5f) && (a.b < .5f) != (b.b < .5f)) {
-;;             ab = a.b, bb = b.b;
-;;             ac = a.g, bc = b.g;
-;;         } else
-;;             return false; // this should never happen
-;;     } else if ((a.g > .5f) != (b.g > .5f) && (a.g < .5f) != (b.g < .5f)
-;;         && (a.b > .5f) != (b.b > .5f) && (a.b < .5f) != (b.b < .5f)) {
-;;         aa = a.g, ba = b.g;
-;;         ab = a.b, bb = b.b;
-;;         ac = a.r, bc = b.r;
-;;     } else
-;;         return false;
-;;     // Find if the channels are in fact discontinuous
-;;     return (fabsf(aa-ba) >= threshold)
-;;         && (fabsf(ab-bb) >= threshold)
-;;         && fabsf(ac-.5f) >= fabsf(bc-.5f); // Out of the pair, only flag the pixel farther from a shape edge
-;; }
-
-(defconstant +pixel-red+ 0)
-(defconstant +pixel-green+ 1)
-(defconstant +pixel-blue+ 0)
+(defconstant +px-red+ 0)
+(defconstant +px-green+ 1)
+(defconstant +px-blue+ 2)
 
 (defun pixel-clash (a b threshold)
 
   (when *debug-correct-msdf-error*
-    (format t "~%b: ~a~%" b))
+    (format t "a: ~a~%" a)
+    (format t "b: ~a~%" b)
+    (format t "...~%"))
 
-  (let ((a-in (>= (+ (if (> (aref a 0) 0.5) 1 0)
-		     (if (> (aref a 1) 0.5) 1 0)
-		     (if (> (aref a 2) 0.5) 1 0))
-		  2))
-	(b-in (>= (+ (if (> (aref b 0) 0.5) 1 0)
-		     (if (> (aref b 1) 0.5) 1 0)
-		     (if (> (aref b 2) 0.5) 1 0))
-		  2))
+  (let ((a-in (>= (+ (if (> (aref a +px-red+) 0.5) 1 +px-red+)
+		     (if (> (aref a +px-green+) 0.5) 1 +px-red+)
+		     (if (> (aref a +px-blue+) 0.5) 1 +px-red+))
+		  +px-blue+))
+	(b-in (>= (+ (if (> (aref b +px-red+) 0.5) 1 +px-red+)
+		     (if (> (aref b +px-green+) 0.5) 1 +px-red+)
+		     (if (> (aref b +px-blue+) 0.5) 1 +px-red+))
+		  +px-blue+))
 	(pr t))
 
     (when (not (eq a-in b-in))
       (return-from pixel-clash))
     
     ;; If the change is 0 <-> 1 or 2 <-> 3 channels and not 1 <-> 1 or 2 <-> 2, it is not a clash
-    (when (or (and (> (aref a 0) 0.5) (> (aref a 1) 0.5) (> (aref a 2) 0.5))
-	      (and (< (aref a 0) 0.5) (< (aref a 1) 0.5) (< (aref a 2) 0.5))
-	      (and (> (aref b 0) 0.5) (> (aref b 1) 0.5) (> (aref b 2) 0.5))
-	      (and (< (aref b 0) 0.5) (< (aref b 1) 0.5) (< (aref b 2) 0.5)))
+    (when (or (and (> (aref a +px-red+) 0.5) (> (aref a +px-green+) 0.5) (> (aref a +px-blue+) 0.5))
+	      (and (< (aref a +px-red+) 0.5) (< (aref a +px-green+) 0.5) (< (aref a +px-blue+) 0.5))
+	      (and (> (aref b +px-red+) 0.5) (> (aref b +px-green+) 0.5) (> (aref b +px-blue+) 0.5))
+	      (and (< (aref b +px-red+) 0.5) (< (aref b +px-green+) 0.5) (< (aref b +px-blue+) 0.5)))
       (return-from pixel-clash))
 
     ;; If the change is 0 <-> 1 or 2 <-> 3 channels and not 1 <-> 1 or 2 <-> 2, it is not a clash
-    ;;     if (   (a.r > .5f && a.g > .5f && a.b > .5f)
-    ;;         || (a.r < .5f && a.g < .5f && a.b < .5f)
-    ;;         || (b.r > .5f && b.g > .5f && b.b > .5f)
-    ;;         || (b.r < .5f && b.g < .5f && b.b < .5f))
-    ;;         return false;
-    (when (or (and (> (aref a 0) 0.5) (> (aref a 1) 0.5) (> (aref a 2) 0.5))
-	      (and (< (aref a 0) 0.5) (< (aref a 1) 0.5) (< (aref a 2) 0.5))
-	      (and (> (aref b 0) 0.5) (> (aref b 1) 0.5) (> (aref b 2) 0.5))
-	      (and (< (aref b 0) 0.5) (< (aref b 1) 0.5) (< (aref b 2) 0.5)))
+    (when (or (and (> (aref a +px-red+) 0.5) (> (aref a +px-green+) 0.5) (> (aref a +px-blue+) 0.5))
+	      (and (< (aref a +px-red+) 0.5) (< (aref a +px-green+) 0.5) (< (aref a +px-blue+) 0.5))
+	      (and (> (aref b +px-red+) 0.5) (> (aref b +px-green+) 0.5) (> (aref b +px-blue+) 0.5))
+	      (and (< (aref b +px-red+) 0.5) (< (aref b +px-green+) 0.5) (< (aref b +px-blue+) 0.5)))
       (return-from pixel-clash))
     
     ;; Find which color is which: _a, _b = the changing channels, _c = the remaining one
@@ -86,42 +47,47 @@
 	  (ac 0.0)
 	  (bc 0.0))
       
-      (cond ((and (not (eq (> (aref a 0) 0.5) (> (aref b 0) 0.5)))
-		  (not (eq (< (aref a 0) 0.5) (< (aref b 0) 0.5))))
-	     (setf aa (aref a 0))
-	     (setf ba (aref b 0))
-	     (cond ((and (not (eq (> (aref a 1) 0.5) (> (aref b 1) 0.5)))
-			 (not (eq (< (aref a 1) 0.5) (< (aref b 1) 0.5))))
-		    (setf ab (aref a 1))
-		    (setf bb (aref b 1))
-		    (setf ac (aref a 2))
-		    (setf bc (aref b 2)))
-		   ((and (not (eq (> (aref a 2) 0.5) (> (aref b 2) 0.5)))
-			 (not (eq (< (aref a 2) 0.5) (< (aref b 2) 0.5))))
-		    (setf ab (aref a 2))
-		    (setf bb (aref b 2))
-		    (setf ac (aref a 1))
-		    (setf bc (aref b 1)))
+      (cond ((and (not (eq (> (aref a +px-red+) 0.5) (> (aref b +px-red+) 0.5)))
+		  (not (eq (< (aref a +px-red+) 0.5) (< (aref b +px-red+) 0.5))))
+	     (setf aa (aref a +px-red+))
+	     (setf ba (aref b +px-red+))
+
+	     (when *debug-correct-msdf-error*
+	       (format t "    [p-c] threshold = ~a~%" threshold)
+	       (format t "    [p-c] aa = ~a~%" aa)
+	       (format t "    [p-c] ba = ~a~%" ba)
+	       (format t "    [p-c] ab = ~a~%" ab)
+	       (format t "    [p-c] bb = ~a~%" bb)
+	       (format t "    [p-c] ac = ~a~%" ac)
+	       (format t "    [p-c] bc = ~a~%" bc))
+	     
+	     (cond ((and (not (eq (> (aref a +px-green+) 0.5) (> (aref b +px-green+) 0.5)))
+			 (not (eq (< (aref a +px-green+) 0.5) (< (aref b +px-green+) 0.5))))
+		    (setf ab (aref a +px-green+))
+		    (setf bb (aref b +px-green+))
+		    (setf ac (aref a +px-blue+))
+		    (setf bc (aref b +px-blue+)))
+		   ((and (not (eq (> (aref a +px-blue+) 0.5) (> (aref b +px-blue+) 0.5)))
+			 (not (eq (< (aref a +px-blue+) 0.5) (< (aref b +px-blue+) 0.5))))
+		    (setf ab (aref a +px-blue+))
+		    (setf bb (aref b +px-blue+))
+		    (setf ac (aref a +px-green+))
+		    (setf bc (aref b +px-green+)))
 		   (t
-		    (error "this should never happen")
+		    (warn "pixel-clash: this should never happen")
 		    (return-from pixel-clash))))
-	    ((and (not (eq (> (aref a 1) 0.5) (> (aref b 1) 0.5)))
-		  (not (eq (< (aref a 1) 0.5) (< (aref b 1) 0.5)))
-		  (not (eq (> (aref a 2) 0.5) (> (aref b 2) 0.5)))
-		  (not (eq (< (aref a 2) 0.5) (< (aref b 2) 0.5))))
-	     (setf aa (aref a 1))
-	     (setf ba (aref b 1))
-	     (setf ab (aref a 2))
-	     (setf bb (aref b 2))
-	     (setf ac (aref a 0))
-	     (setf bc (aref b 0)))
+	    ((and (not (eq (> (aref a +px-green+) 0.5) (> (aref b +px-green+) 0.5)))
+		  (not (eq (< (aref a +px-green+) 0.5) (< (aref b +px-green+) 0.5)))
+		  (not (eq (> (aref a +px-blue+) 0.5) (> (aref b +px-blue+) 0.5)))
+		  (not (eq (< (aref a +px-blue+) 0.5) (< (aref b +px-blue+) 0.5))))
+	     (setf aa (aref a +px-green+))
+	     (setf ba (aref b +px-green+))
+	     (setf ab (aref a +px-blue+))
+	     (setf bb (aref b +px-blue+))
+	     (setf ac (aref a +px-red+))
+	     (setf bc (aref b +px-red+)))
 	    (t
 	     (return-from pixel-clash)))
-
-;;     // Find if the channels are in fact discontinuous
-      ;;     return (fabsf(aa-ba) >= threshold) &&
-      ;;            (fabsf(ab-bb) >= threshold)
-      ;;          && fabsf(ac-.5f) >= fabsf(bc-.5f); // Out of the pair, only flag the pixel farther from a shape edge
 
       (when *debug-correct-msdf-error*
 	(format t "    [p-c] threshold = ~a~%" threshold)
@@ -143,21 +109,64 @@
   (let ((clashes (make-array 0 :fill-pointer 0 :adjustable t))
 	(w 32)
 	(h 32))
+    
     (iter (for y from 0 below h)
 	  (iter (for x from 0 below w)
-		(when *debug-correct-msdf-error*
-		  (format t "[c-m-e] (~a, ~a) -----------------~%" x y))
-		(when (or (and (> x 0) (pixel-clash (get-pixel output x y w) (get-pixel output (- x 1) y w) (vx2 threshold)))
-			  (and (< x (- w 1)) (pixel-clash (get-pixel output x y w) (get-pixel output (+ x 1) y w) (vx2 threshold)))
-			  (and (> y 0) (pixel-clash (get-pixel output x y w) (get-pixel output x (- y 1) w) (vy2 threshold)))
-			  (and (< y (- h 1)) (pixel-clash (get-pixel output x y w) (get-pixel output x (+ y 1) w) (vy2 threshold))))
+		(for pixel = (get-pixel output x y w))
+		
+		(when (and *debug-correct-msdf-error* (= x 5) (= y 6))
+		  (format t "[c-m-e] (~a, ~a) ----------------------~%" x y)
+		  (format t "(5,6): ~a~%~%" (get-pixel output 5 6 w))
+		  
+		  (format t "(~a,~a): ~a~%" (- x 1) y (get-pixel output (- x 1) y w))
+
+		  (pixel-clash pixel
+			       (get-pixel output (- x 1) y w)
+			       (vx2 threshold))		  
+		  
+		  (format t "(~a,~a): ~a~%" (+ x 1) y (get-pixel output (+ x 1) y w))
+
+		  (pixel-clash pixel
+			       (get-pixel output (+ x 1) y w)
+			       (vx2 threshold))
+
+		  (format t "(~a,~a): ~a~%" x (- y 1) (get-pixel output x (- y 1) w))
+
+		  (pixel-clash pixel
+			       (get-pixel output x (- y 1) w) ; 5, (- 6 1) = 5,5 ; 6,6
+			       (vy2 threshold))
+
+		  (format t "(~a,~a): ~a~%" x (+ y 1) (get-pixel output x (+ y 1) w))
+		  
+		  (pixel-clash pixel
+			       (get-pixel output x (+ y 1) w)
+			       (vy2 threshold)))
+		
+		(when (or (and (> x 0)
+			       (pixel-clash pixel
+					    (get-pixel output (- x 1) y w)
+					    (vx2 threshold)))
+			  (and (< x (- w 1))
+			       (pixel-clash pixel
+					    (get-pixel output (+ x 1) y w) ; (6, 6)
+					    (vx2 threshold)))
+			  (and (> y 0)
+			       (pixel-clash pixel
+					    (get-pixel output x (- y 1) w)
+					    (vy2 threshold)))
+			  (and (< y (- h 1))
+			       (pixel-clash pixel
+					    (get-pixel output x (+ y 1) w)
+					    (vy2 threshold))))
 		  (when *debug-correct-msdf-error*
 		    (format t "[c-m-e] push: ~a~%" (list x y)))
 		  (vector-push-extend (make-array 2 :initial-contents (list x y))
 				      clashes))
-		(when *debug-correct-msdf-error*
+		(when (and *debug-correct-msdf-error* nil)
 		  (when (and (= x 12) (= y 11)) (sb-ext:exit)))))
+    
     (format t "[correct-msdf-error] clashes length: ~a~%" (length clashes))
+
     (iter (for clash in-vector clashes)
 	  (let* ((pixel (get-pixel output (aref clash 0) (aref clash 1) w))
 		 (med (median (aref pixel 0) (aref pixel 1) (aref pixel 2))))
@@ -243,57 +252,74 @@
 
 				(when *debug-generate-msdf*
 				  ;; (format t "  [generateMSDF][e#~a] ~a~%" ii edge)
-				  ;; (format t "  [generateMSDF][e#~a] dist: ~4$, dot: ~4$~%"
-				  ;; 	  ii
-				  ;; 	  (distance distance)
-				  ;; 	  (dot distance))
-				  ;; (format t "                       param: ~4$~%"
-				  ;; 	  param))
+				  (format t "  [generateMSDF][e#~a] dist: ~4$, dot: ~4$~%"
+				  	  ii
+				  	  (distance distance)
+				  	  (dot distance))
+				  (format t "                       param: ~4$~%"
+				  	  param)
 				  )
 
-				(when *debug-generate-msdf*
-				  ;; (format t " [generateMSDF][e#~a] color edge: ~a, logand green: ~a~%"
-				  ;; 	  ii (color edge) (logand (color edge) +green+)))
-				  )
+				;; (when *debug-generate-msdf*
+				;;   (format t " [generateMSDF][e#~a] b| color edge: ~a, logand: ~a~%"
+				;;   	  ii (color edge) (logand (color edge) +green+))
+				;;   (format t " [generateMSDF][e#~a] g| color edge: ~a, logand: ~a~%"
+				;; 	  ii (color edge) (logand (color edge) +blue+)))
+
+				(when (and *debug-generate-msdf* t)
+				  (format t "  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
+					  ii
+					  (distance (min-distance r))
+					  (dot (min-distance r)))
+				  (format t "  [generateMSDF][e#~a] g dist, dot: ~4$, ~4$~%"
+					  ii
+					  (distance (min-distance g))
+					  (dot (min-distance g)))
+				  (format t "  [generateMSDF][e#~a] b dist, dot: ~4$, ~4$~%~%"
+					  ii
+					  (distance (min-distance b))
+					  (dot (min-distance b))))
 				
 				(when (and (not (= (logand (color edge) +red+) 0))
 					   (sd< distance (min-distance r)))
+				  (when (and *debug-generate-msdf* t)
+				    (format t "  [generateMSDF][e#~a] r set~%" ii))
 				  (setf (min-distance r) distance)
 				  (setf (near-edge r) edge)
 				  (setf (near-param r) param))
 				(when (and (not (= (logand (color edge) +green+) 0))
 					   (sd< distance (min-distance g)))
+				  (when (and *debug-generate-msdf* t)
+				    (format t "  [generateMSDF][e#~a] g set~%" ii))
 				  (setf (min-distance g) distance)
 				  (setf (near-edge g) edge)
 				  (setf (near-param g) param))
+				
 				(when (and (not (= (logand (color edge) +blue+) 0))
 					   (sd< distance (min-distance b)))
+				  (when (and *debug-generate-msdf* t)
+				    (format t "  [generateMSDF][e#~a] b set~%" ii))
 				  (setf (min-distance b) distance)
 				  (setf (near-edge b) edge)
 				  (setf (near-param b) param))
 
 				(when (and *debug-generate-msdf* t)
-				  (format t "  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
+				  (format t "~%  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
 					  ii
-					  (if (< (distance (min-distance r)) 0.0)
-					      nil
-					      (distance (min-distance r)))
+					  (distance (min-distance r))
 					  (dot (min-distance r)))
 				  (format t "  [generateMSDF][e#~a] g dist, dot: ~4$, ~4$~%"
 					  ii
-					  (if (< (distance (min-distance g)) 0.0)
-					      nil
-					      (distance (min-distance g)))
+					  (distance (min-distance g))
 					  (dot (min-distance g)))
-				  (format t "  [generateMSDF][e#~a] b dist, dot: ~4$, ~4$~%"
+				  (format t "  [generateMSDF][e#~a] b dist, dot: ~4$, ~4$~%~%"
 					  ii
-					  (if (< (distance (min-distance b)) 0.0)
-					      nil
-					      (distance (min-distance b)))
+					  (distance (min-distance b))
 					  (dot (min-distance b))))
 
 				(when *debug-generate-msdf*
-				  (when (= ii -1) (sb-ext:exit)))
+				  (when (and (= x 5) (= row 6) (= ii 15) (eq nil t))
+				    (sb-ext:exit)))
 
 				(incf ii)
 
@@ -319,21 +345,15 @@
 		  (when *debug-generate-msdf*
 		    (format t "  [generateMSDF][(~a,~a)] sr dist, dot: ~4$, ~4$~%"
 			    x row
-			    (if (< (distance (min-distance sr)) 0.0)
-				nil
-				(distance (min-distance sr)))
+			    (distance (min-distance sr))
 			    (dot (min-distance sr)))
 		    (format t "  [generateMSDF][(~a,~a)] sg dist, dot: ~4$, ~4$~%"
 			    x row
-			    (if (< (distance (min-distance sg)) 0.0)
-				nil
-				(distance (min-distance sg)))
+			    (distance (min-distance sg))
 			    (dot (min-distance sg)))
 		    (format t "  [generateMSDF][(~a,~a)] sb dist, dot: ~4$, ~4$~%"
 			    x row
-			    (if (< (distance (min-distance sb)) 0.0)
-				nil
-				(distance (min-distance sb)))
+			    (distance (min-distance sb))
 			    (dot (min-distance sb))))
 		  
 		  (let* ((dr (distance (min-distance sr)))
@@ -365,9 +385,9 @@
 		      (when *debug-generate-msdf*
 			(format t "[generate-msdf] (~a,~a): ~a, ~a, ~a~%" x row r g b))
 
-		      ;; (when t
-		      ;; 	(when (and (= x 12) (= row 11))
-		      ;; 	  (sb-ext:exit)))
+		      (when nil
+		      	(when (and (= x 5) (= row 5))
+		      	  (sb-ext:exit)))
 		      
 		      t))))))
   

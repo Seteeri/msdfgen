@@ -39,8 +39,9 @@
 ;; }
 (defmethod sd< ((a signed-distance) (b signed-distance))
   (or (< (abs (distance a)) (abs (distance b)))
-      (and (= (abs (distance a)) (abs (distance b)))
-       (< (dot a) (dot b)))))
+      (and (= (abs (distance a))
+	      (abs (distance b)))
+	   (< (dot a) (dot b)))))
 
 ;; bool operator>(SignedDistance a, SignedDistance b) {
 ;;     return fabs(a.distance) > fabs(b.distance) || (fabs(a.distance) == fabs(b.distance) && a.dot > b.dot);

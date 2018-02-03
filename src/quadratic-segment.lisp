@@ -196,22 +196,29 @@
       (format t "    [quad:sd] b = ~a~%" b)
       (format t "    [quad:sd] c = ~a~%" c)
       (format t "    [quad:sd] min-distance = ~a~%" min-distance)
-      (format t "    [quad:sd] param = ~a~%" param))
+      (format t "    [quad:sd] param = ~a~%" param)
+      (format t "    -----------------~%" qa))
     
-    (let ((distance (* (non-zero-sign (cross-product ab qa))
+    (let ((distance (* (non-zero-sign (cross-product (v- (aref points 2) (aref points 1))
+						     (v- (aref points 2) origin)))
 		       (vlength (v- (aref points 2) origin)))))
       (when (< (abs distance) (abs min-distance))
 	(when *debug-conic-signed-distance*
-	  (format t "    [quad:sd] min-distance/param change~%"))
+	  (format t "    -----------------~%" qa)
+	  (format t "    [quad:sd] min-distance/param change 1~%")
+	  (format t "    -----------------~%" qa))
 	(setf min-distance distance)
 	(setf param (/ (dot-product (v- origin (aref points 1)) (v- (aref points 2) (aref points 1)))
 		       (dot-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) (aref points 1)))))))
-    
+
+    ;; Find solution
     (multiple-value-bind (n solution) (solve-cubic a b c d)
       ;; (iter (for i from 0 below n)
       ;;       (for x = (nth i solution))
       (when *debug-conic-signed-distance-solve*
-	(format t "    [quad:sd] n = ~a, solution = ~a~%" n solution))
+	(format t "    -----------------~%" qa)
+	(format t "    [quad:sd] n = ~a, solution = ~a~%" n solution)
+	(format t "    -----------------~%" qa))
       
       (iter (for x in solution)
 	    (when (and (> x 0)
@@ -221,7 +228,9 @@
 				  (vlength (v- endpoint origin)))))
 		(when (<= (abs distance) (abs min-distance))
 		  (when *debug-conic-signed-distance*
-		    (format t "    [quad:sd] min-distance/param change~%"))
+		    (format t "    -----------------~%" qa)
+		    (format t "    [quad:sd] min-distance/param change 2~%")
+		    (format t "    -----------------~%" qa))
 		  (setf min-distance distance)
 		  (setf param x))))))
 
