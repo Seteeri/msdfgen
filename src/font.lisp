@@ -43,8 +43,8 @@
     ;; check face if null
   
     ;; printable asii printable characters range including extended
-    (iter (for code from 32 to 120)
-    ;; (let ((code 107))
+    ;; (iter (for code from 32 to 255)
+    (let ((code 123))
 	  
 	  (let* ((width 32)
 		 (height 32)

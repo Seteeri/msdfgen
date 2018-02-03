@@ -209,12 +209,12 @@
   ;; Recursively subdivide the curve to find the intersection point(s). If we haven't
   ;; converged on a solution by a given depth, just treat it as a linear segment
   ;; and call the approximation good enough.
-  (when (> depth 30)
+  (when (> (first depth 30))
     (return-from cross-cubic (cross-line r p0 p1 cb)))
 
   ;; original function is pass by value, not reference
   ;; however points are pass by reference
-  (incf depth)
+  (incf (first depth))
 
   (let* ((mid (v* (v+ c0 c1) 0.5))
 	 (c00 (v* (v+ p0 c0) 0.5))
@@ -228,7 +228,7 @@
 
 (defmethod cross-points ((edge cubic-segment) r cb)
   (let ((points (points edge)))
-    (cross-cubic r (aref points 0) (aref points 1) (aref points 2) (aref points 3) 0 cb)))
+    (cross-cubic r (aref points 0) (aref points 1) (aref points 2) (aref points 3) '(0) cb)))
 
 ;; Parameters for iterative search of closest point on a cubic Bezier curve. Increase for higher precision.
 (defconstant +msdfgen-cubic-search-starts+ 4)

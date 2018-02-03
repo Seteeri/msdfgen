@@ -161,19 +161,20 @@
   ;; Recursively subdivide the curve to find the intersection point(s). If we haven't
   ;; converged on a solution by a given depth, just treat it as a linear segment
   ;; and call the approximation good enough.
-  (when (> depth 30)
+  (when (> (first depth) 30)
     (return-from cross-quad (cross-line r p0 p1 cb)))
 
-  (incf depth)
+  (incf (first depth))
   
   (let* ((mc0 (v* (v+ p0 c0) 0.5))
 	 (mc1 (v* (v+ c0 p1) 0.5))
 	 (mid (v* (v+ mc0 mc1) 0.5)))
+    
     (+ (cross-quad r p0 mc0 mid depth cb) (cross-quad r mid mc1 p1 depth cb))))
 
 (defmethod cross-points ((edge quadratic-segment) r cb)
   (let ((points (points edge)))
-    (cross-quad r (aref points 0) (aref points 1) (aref points 2) 0 cb)))
+    (cross-quad r (aref points 0) (aref points 1) (aref points 2) '(0) cb)))
 
 (defmethod signed-distance ((edge quadratic-segment) origin)
   (let* ((points (points edge))
