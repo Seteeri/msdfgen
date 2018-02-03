@@ -28,15 +28,19 @@
   
   (let ((face (freetype2:new-face "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf")))
     ;; check face if null
-  
+    
     ;; printable asii printable characters range including extended
     (iter (for code from 32 to 255)
-    ;; (let ((code 164))
+	  ;; (let ((code 164))
 	  
-	  (let* ((width 32)
+	  (let* ((shape (load-glyph face code))
+		 (width 32)
 		 (height 32)
-		 (shape (load-glyph face code))
-		 (bitmap (make-array (* width height) :fill-pointer 0)))
+		 (bitmap (make-array (* width height) :fill-pointer 0))
+		 (scale (vec2 1.0 1.0))
+		 (translation (vec2 4.0 4.0))
+		 (edge-threshold 1.00000001d0)
+		 (range 4.0))
 	    
 	    (normalize (contours shape))
 	    
@@ -48,27 +52,35 @@
 	    (generate-msdf bitmap
 			   width height
 			   shape
-			   4.0 ; range
-			   (vec2 1.0 1.0) ; scale
-			   (vec2 4.0 4.0)) ; translation
+			   scale
+			   translation
+			   range)
 
-	    ;; Write RGB float output
-	    (when t
-	      (with-open-file (out #p"/home/user/font-gen/sdf/output.txt"
-				   :direction :output
-				   :if-does-not-exist :create
-				   :if-exists :supersede)
-		(iter (for y from (- height 1) downto 0)
-		      (iter (for x from 0 below width)
-			    (let ((px (get-pixel bitmap x y width)))
-			      (write-line (format nil "(~a, ~a) ~5$ ~5$ ~5$" x y (aref px 0) (aref px 1) (aref px 2))
-					  out))))))
+	    (correct-msdf-error bitmap
+				width height
+				(v/ edge-threshold (v* scale range)))
+
+	    (when nil
+	      (write-raw-buffer-to-file #p"/home/user/font-gen/sdf/output.txt" bitmap width height)
+	      (format t "Wrote /home/user/font-gen/sdf/output.txt"))
 	    
 	    (write-rgb-buffer-to-ppm-file (format nil "/home/user/font-gen/sdf/~a.ppm" code)
 					  bitmap width height)
 	    (format t "Wrote ~a~%" (format nil "/home/user/font-gen/sdf/~a.ppm" code)))))
   
   (sb-ext:exit))
+
+(defun write-raw-buffer-to-file (filepath bitmap width height)
+  (with-open-file (out filepath
+		       :direction :output
+		       :if-does-not-exist :create
+		       :if-exists :supersede)
+    (iter (for y from (- height 1) downto 0)
+	  (iter (for x from 0 below width)
+		(for px = (get-pixel bitmap x y width))
+		(write-line (format nil "(~a, ~a) ~5$ ~5$ ~5$" x y (aref px 0) (aref px 1) (aref px 2))
+			    out)))))
+
 
 (defun pixel-clash (a b threshold)
 
@@ -237,7 +249,7 @@
 	    (setf (aref pixel 1) med)
 	    (setf (aref pixel 2) med)))))
 
-(defun generate-msdf (output w h shape range scale translate &optional (edge-threshold 1.00000001d0))
+(defun generate-msdf (bitmap w h shape scale translate range)
   (let* ((contour-count (length (contours shape)))
 	 (spanner (make-instance 'winding-spanner))
 	 (contour-sd (make-array contour-count :fill-pointer 0 :adjustable t)))
@@ -250,6 +262,8 @@
 	    (when *debug-generate-msdf*
 	      (format t "[generate-msdf] call bounds~%"))
 
+	    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	    
 	    (multiple-value-bind (bound-left bound-bottom bound-right bound-top) (bounds shape 0.0 0.0 0.0 0.0)
 	      (when *debug-generate-msdf*
 		(format t "~%[generate-msdf] collect-crossings: y, row: ~a, ~a~%" y row))
@@ -257,6 +271,8 @@
 				 shape
 				 (vec2 (- bound-left 0.5)
 				       (- (/ (+ y 0.5) (vy2 scale)) (vy2 translate)))))
+	    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 	    (when *debug-generate-msdf*
 	      (format t "[generate-msdf] call bounds done~%"))
 	    
@@ -272,6 +288,8 @@
 
 		  (when *debug-generate-msdf*
 		    (format t "[generate-msdf] real-sign: ~a, p: ~4$, ~4$~%" real-sign (vx2 p) (vy2 p)))
+
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		  
 		  (iter (for contour in-vector (contours shape))
 			(for r = (make-instance 'edge-point))
@@ -281,6 +299,8 @@
 
 			(when *debug-generate-msdf*
 			  (format t " [generate-msdf] length edges: ~a~%" (length (edges contour))))
+
+                        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;                  
 			
 			(iter (for edge in-vector (edges contour))
 			      ;; signed-distance - in edges
@@ -366,6 +386,8 @@
 
 				t))
 
+                        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+			
 			(when (sd< (min-distance r)
 				   (min-distance sr))
 			  (setf sr r))
@@ -375,6 +397,8 @@
 			(when (sd< (min-distance b)
 				   (min-distance sb))
 			  (setf sb b)))
+
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		  
 		  (when (near-edge sr)
 		    (distance-to-pseudo-distance (near-edge sr) (min-distance sr) p (near-param sr)))
@@ -383,6 +407,8 @@
 		  (when (near-edge sb)
 		    (distance-to-pseudo-distance (near-edge sb) (min-distance sb) p (near-param sb)))
 
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		  
 		  (when *debug-generate-msdf*
 		    (format t "  [generateMSDF][(~a,~a)] sr dist, dot: ~4$, ~4$~%"
 			    x row
@@ -396,6 +422,8 @@
 			    x row
 			    (distance (min-distance sb))
 			    (dot (min-distance sb))))
+
+                  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		  
 		  (let* ((dr (distance (min-distance sr)))
 			 (dg (distance (min-distance sg)))
@@ -418,7 +446,7 @@
 		    (let ((r (+ (/ dr range) 0.5d0))
 			  (g (+ (/ dg range) 0.5d0))
 			  (b (+ (/ db range) 0.5d0))
-			  (px (aref output (+ (* row w) x)))) ; content[y*w+x]
+			  (px (aref bitmap (+ (* row w) x)))) ; content[y*w+x]
 		      (vector-push r px)
 		      (vector-push g px)
 		      (vector-push b px)
@@ -430,10 +458,7 @@
 		      	(when (and (= x 5) (= row 5))
 		      	  (sb-ext:exit)))
 		      
-		      t))))))
-  
-  (when (> edge-threshold 0)
-    (correct-msdf-error output w h (v/ edge-threshold (v* scale range)))))
+		      t)))))))
 
 
 (defun distance-to-pseudo-distance (edge distance origin param)
