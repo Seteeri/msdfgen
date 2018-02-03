@@ -1,5 +1,19 @@
 (in-package :sdf)
 
+(defparameter *debug-outline-decompose* nil)
+(defparameter *debug-bounds* nil)
+
+(defparameter *debug-conic-signed-distance* nil)
+(defparameter *debug-conic-signed-distance-solve* nil)
+(defparameter *debug-linear-signed-distance* nil)
+
+(defparameter *debug-edge-coloring-simple* nil)
+(defparameter *debug-split-in-thirds* nil)
+(defparameter *debug-advance-to* nil)
+(defparameter *debug-collect-crossings* nil)
+(defparameter *debug-generate-msdf* nil)
+(defparameter *debug-correct-msdf-error* nil)
+
 (defclass ft-context ()
   ((pos
     :accessor pos
@@ -19,23 +33,11 @@
 
 ;; Note:
 ;; Point2 = Vector2
+(declaim (inline make-f2-vec2))
 (defun make-ft-vec2 (x y)
   (vec2 (/ x 64) (/ y 64)))
 
-(defparameter *debug-outline-decompose* nil)
-(defparameter *debug-bounds* nil)
 
-(defparameter *debug-conic-signed-distance* nil)
-(defparameter *debug-conic-signed-distance-solve* nil)
-(defparameter *debug-linear-signed-distance* nil)
-
-(defparameter *debug-edge-coloring-simple* nil)
-(defparameter *debug-split-in-thirds* nil)
-(defparameter *debug-advance-to* nil)
-(defparameter *debug-collect-crossings* nil)
-(defparameter *debug-generate-msdf* nil)
-(defparameter *debug-correct-msdf-error* nil)
-  
 (defun main ()
 
   ;; (format t "~a~%" (freetype2:check-font-file "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf"))
@@ -174,9 +176,7 @@
 				   :p2 to)))
 	 (when *debug-outline-decompose*
 	   (format t "[conicto] ~a:~%" edge)
-	   (format t "          ~a | ~a, ~a~%" (pos *ft-context*) control to)
-	   ;; (format t "          ~a~%" (points edge))
-	   )
+	   (format t "          ~a | ~a, ~a~%" (pos *ft-context*) control to))
 	 (vector-push-extend edge (edges (contour *ft-context*)))
 	 (setf (pos *ft-context*) (vcopy2 to)))))
     ((eq op :cubicto)
@@ -198,188 +198,3 @@
 	   (format t "          ~a | ~a, ~a, ~a~%" (pos *ft-context*) control-1 control-2 to))
 	 (vector-push-extend edge (edges (contour *ft-context*)))
 	 (setf (pos *ft-context*) (vcopy2 to)))))))
-
-
-(declaim (inline clamp))
-(defun clamp (number min max)
-  "Clamps the NUMBER into [min, max] range. Returns MIN if NUMBER is lesser then
-MIN and MAX if NUMBER is greater then MAX, otherwise returns NUMBER."
-  (if (< number min)
-      min
-      (if (> number max)
-	  max
-	  number)))
-
-;; /// Returns the middle out of three values
-;; template <typename T>
-;; inline T median(T a, T b, T c) {
-;;     return max(min(a, b),
-;;                min(max(a, b),
-;;                    c));
-;; }
-(defun median (a b c)
-  (max (min a b)
-       (min (max a b) c)))
-
-
-;; bool Vector2::operator!() const {
-;;     return !x && !y;
-;; }
-;; returns whether zero vector
-(defun v-not (v)
-  (and (= (vx2 v) 0.0)
-       (= (vy2 v) 0.0)))
-
-;; double dotProduct(const Vector2 &a, const Vector2 &b) {
-;;     return a.x*b.x+a.y*b.y;
-;; }
-(defun dot-product (a b)
-  (+ (* (vx2 a)
-	(vx2 b))
-     (* (vy2 a)
-	(vy2 b))))
-
-;; double crossProduct(const Vector2 &a, const Vector2 &b) {
-;;     return a.x*b.y-a.y*b.x;
-;; }
-(defun cross-product (a b)
-  (- (* (vx2 a)
-	(vy2 b))
-     (* (vy2 a)
-	(vx2 b))))
-
-;; Vector2 getOrthonormal(bool polarity = true, bool allowZero = false) const;
-;; Vector2 Vector2::getOrthonormal(bool polarity, bool allowZero) const {
-;;     double len = length();
-;;     if (len == 0)
-;;         return polarity ? Vector2(0, !allowZero) : Vector2(0, -!allowZero);
-;;     return polarity ? Vector2(-y/len, x/len) : Vector2(y/len, -x/len);
-;; }
-(defun get-orthonormal (point &optional (polarity t) (allow-zero nil))
-  (let ((len (vlength point)))
-    (when (= len 0)
-      (return-from get-orthonormal (if polarity
-				       (vec2 0 (if (not allow-zero) 1 0))
-				       (vec2 0 (if (not allow zero) -1 0)))))
-    (return-from get-orthonormal (if polarity
-				     (vec2 (/ (- (vy2 point)) len) (/ (vx2 point) len))
-				     (vec2 (/ (vy2 point) len) (/ (- (vx2 point)) len))))))
-
-;; /// Returns 1 for non-negative values and -1 for negative values.
-;; template <typename T>
-;; inline int nonZeroSign(T n) {
-;;     return 2*(n > T(0))-1;
-;; }
-(defun non-zero-sign (n)
-  (- (* 2 (if (> n 0) 1 0)) 1))
-
-
-;; template <typename T, typename S>
-;; inline T mix(T a, T b, S weight) {
-;;     return (1-weight)*a)+(weight*b)
-;; }
-(defun mix (a b weight)
-  (+ (* (- 1 weight)
-	a)
-     (* weight
-	b)))
-
-;; (v+ (v* a (- 1 weight))
-;;     (v* b weight)
-
-;; (defun mix-point (a b weight)
-;;   ;; scale vector then add
-;;   (let ((as (- 1 weight)))
-;;     (vec2 (+ (* as (vx2 a))
-;; 	     (* weight (vx2 b)))
-;; 	  (+ (* as (vy2 a))
-;; 	     (* weight (vy2 b))))))
-(defun mix-point (a b weight)
-  (v+ (v* a (- 1 weight))
-      (v* b weight)))
-    
-;; (make-array 2
-;;      :initial-contents
-;;      (list (+ (* as (aref a 0))
-;;           (* weight (aref b 0)))
-;;            (+ (* as (aref a 1))
-;;           (* weight (aref b 1)))))))
-
-;; static void pointBounds(Point2 p, double &l, double &b, double &r, double &t) {
-;;     if (p.x < l) l = p.x;
-;;     if (p.y < b) b = p.y;
-;;     if (p.x > r) r = p.x;
-;;     if (p.y > t) t = p.y;
-;; }
-(defun point-bounds (point left bottom right top)
-  (when *debug-bounds*
-    (format t "       [point-bounds] ~a, ~a, ~a, ~a, ~a~%" point left bottom right top))
-  (values (if (< (vx2 point) left) (vx2 point) left)
-	  (if (< (vy2 point) bottom) (vy2 point) bottom)
-	  (if (> (vx2 point) right) (vx2 point) right)
-	  (if (> (vy2 point) top) (vy2 point) top)))
-
-(defun solve-quadratic (a b c)
-  (when (< (abs a) 1E-14)
-    (when (< (abs b) 1E-14)
-      (when (= c 0)
-	(return-from solve-quadratic (values -1
-					     ())))
-      (return-from solve-quadratic (values 0
-					   ())))
-    (return-from solve-quadratic (values 1
-					 (list (- (/ c b))))))
-  
-  (let ((dscr (- (* b b)
-		 (* 4 a c))))
-    (cond ((> dscr 0)
-	   (setf dscr (sqrt dscr))
-	   (return-from solve-quadratic (values 2
-						(list (/ (+ (- b) dscr) (* 2 a))
-						      (/ (- (- b) dscr) (* 2 a))))))
-	  ((= dscr 0)
-	   (return-from solve-quadratic (values 1
-						(list (/ (- b) (* 2 a))))))
-	  (t
-	   (return-from solve-quadratic (values 0
-						()))))))
-
-(defun solve-cubic-normed (a b c)
-  (let* ((a2 (* a a))
-	 (q (/ (- a2 (* 3 b)) 9))
-	 (r (/ (+ (* a (- (* 2 a2) (* 9 b))) (* 27 c)) 54))
-	 (r2 (* r r))
-	 (q3 (* q q q)))
-    (if (< r2 q3)
-	(let ((tt (/ r (sqrt q3)))) ; rename tt...
-	  (when (< tt -1) (setf tt -1))
-	  (when (> tt 1) (setf tt 1))
-	  (setf tt (acos tt))
-	  (setf a (/ a 3))
-	  (setf q (* -2 (sqrt q)))
-	  (values 3
-		  (list (- (* q (cos (/ tt 3))) a)
-			(- (* q (cos (/ (+ tt (* 2 PI)) 3))) a)
-			(- (* q (cos (/ (- tt (* 2 PI)) 3))) a))))
-	(let ((aa (- (expt (+ (abs r) (sqrt (- r2 q3))) (/ 1 3))))
-	      (bb 0))
-	  (when (< r 0) (setf aa (- aa)))
-	  (setf bb (if (= aa 0) 0 (/ q aa)))
-	  (setf a (/ a 3))
-	  (let ((x0 (- (+ aa bb) a))
-		(x1 (- (* (- 0.5) (+ aa bb)) a))
-		(x2 (* 0.5 (sqrt 3.0) (- aa bb))))
-	    (if (< (abs x2) 1E-14)
-		(values 2 (list x0 x1))
-		(values 1 (list x0))))))))
-
-;; int solveCubic(double x[3], double a, double b, double c, double d) {
-;;     if (fabs(a) < 1e-14)
-;;         return solveQuadratic(x, b, c, d);
-;;     return solveCubicNormed(x, b/a, c/a, d/a);
-;; }
-;; quadratic signed-distance calls this
-(defun solve-cubic (a b c d)
-  (if (< (abs a) 1E-14)
-      (solve-quadratic b c d) ; x[2]
-      (solve-cubic-normed (/ b a) (/ c a) (/ d a)))) ; x[3]

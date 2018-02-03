@@ -22,11 +22,6 @@
     (setf (aref points 0) p0)
     (setf (aref points 1) p1)))
 
-;; void LinearSegment::splitInThirds(EdgeSegment *&part1, EdgeSegment *&part2, EdgeSegment *&part3) const {
-;;     part1 = new LinearSegment(p[0], point(1/3.), color);
-;;     part2 = new LinearSegment(point(1/3.), point(2/3.), color);
-;;     part3 = new LinearSegment(point(2/3.), p[1], color);
-;; }
 (defmethod split-in-thirds ((edge linear-segment))
   (with-slots (points color) edge
     ;;(assert (not (eq color nil)))
@@ -57,23 +52,16 @@
 	 (p0 (aref points 0))
 	 (p1 (aref points 1)))
     ;; (format t "[point] ~a, ~a~%" p0 p1)
-    (mix-point p0 p1 w)))
+    (mix p0 p1 w)))
 
 (defmethod move-end-point ((edge linear-segment) to)
   (setf (aref (points edge) 1) to))
 
-;; Vector2 LinearSegment::direction(double param) const {
-;;     return p[1]-p[0];
-;; }
 (defmethod direction ((edge linear-segment) param)
   (let ((points (points edge)))
     ;; (format t "[l:direction] ~a~%" points)
     (v- (aref points 1) (aref points 0))))
 
-;; void LinearSegment::bounds(double &l, double &b, double &r, double &t) const {
-;;     pointBounds(p[0], l, b, r, t);
-;;     pointBounds(p[1], l, b, r, t);
-;; }
 (defmethod bounds ((edge linear-segment) left bottom right top)
   (let ((points (points edge)))
     (when *debug-bounds*
@@ -89,29 +77,13 @@
   (let ((points (points edge)))
     (cross-line r (aref points 0) (aref points 1) cb)))
 
-;; /// Check how many times a ray from point R extending to the +X direction intersects
-;; /// the given segment:
-;; ///  0 = no intersection or co-linear
-;; /// +1 = intersection increasing in the Y axis
-;; /// -1 = intersection decreasing in the Y axis
-;; static int crossLine(const Point2& r, const Point2& p0, const Point2& p1, EdgeSegment::CrossingCallback* cb) {
-;;     if (r.y < min(p0.y, p1.y))
-;;         return 0;
-;;     if (r.y >= max(p0.y, p1.y))
-;;         return 0;
-;;     if (r.x >= max(p0.x, p1.x))
-;;         return 0;
-;;     // Intersect the line at r.y and see if the intersection is before or after the origin.
-;;     double xintercept = (p0.x + (r.y - p0.y) * (p1.x - p0.x) / (p1.y - p0.y)); // a + ((b * c) / d)
-;;     if (r.x < xintercept) {
-;;         int w = (p0.y < p1.y) ? 1 : -1;
-;;         if( cb != NULL ) {
-;;             cb->intersection(Point2(xintercept, r.y), w);
-;;         }
-;;         return w;
-;;     }
-;;     return 0;
-;; }
+;; TODO: Have cross-* return a symbol rather than a number
+;;
+;; Check how many times a ray from point R extending to the +X direction intersects
+;; the given segment:
+;; 0 = no intersection or co-linear
+;; +1 = intersection increasing in the Y axis
+;; -1 = intersection decreasing in the Y axis
 (defun cross-line (r p0 p1 cb)
 
   ;; (format t "[cross-line] ~a, ~a, ~a~%"
@@ -153,7 +125,7 @@
   (let* ((points (points edge))
 	 (aq (v- origin (aref points 0)))
 	 (ab (v- (aref points 1) (aref points 0)))
-	 (param (/ (dot-product aq ab) (dot-product ab ab)))
+	 (param (/ (v. aq ab) (v. ab ab)))
 	 (eq (v- (aref points (if (> param 0.5) 1 0)) origin))
 	 (end-point-distance (vlength eq)))
 
@@ -168,12 +140,12 @@
 
     (when (and (> param 0)
 	       (< param 1))
-      (let ((ortho-distance (dot-product (get-orthonormal ab nil) aq)))
+      (let ((ortho-distance (v. (get-orthonormal ab nil) aq)))
 	(when (< (abs ortho-distance) end-point-distance)
 	  (return-from signed-distance (values (make-instance 'signed-distance :distance ortho-distance :dot 0)
 					       param)))))
     (values (make-instance 'signed-distance
 			   :distance (* (non-zero-sign (cross-product aq ab)) end-point-distance)
-			   :dot (abs (dot-product (vunit ab) (vunit eq))))
+			   :dot (abs (v. (vunit ab) (vunit eq))))
 	    param)))
 

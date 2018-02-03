@@ -1,5 +1,9 @@
 (in-package :sdf)
 
+;; Parameters for iterative search of closest point on a cubic Bezier curve. Increase for higher precision.
+(defconstant +msdfgen-cubic-search-starts+ 4)
+(defconstant +msdfgen-cubic-search-steps+ 4)
+
 (defclass cubic-segment ()
   ((points
     :accessor points
@@ -71,38 +75,38 @@
 			     p0
 			     (if (= p0 p1)
 				 p0
-				 (mix-point p0 p1 (/ 1 3)))
-			     (mix-point (mix-point p0 p1 (/ 1 3))
-					(mix-point p1 p2 (/ 1 3))
-					(/ 1 3))
+				 (mix p0 p1 (/ 1 3)))
+			     (mix (mix p0 p1 (/ 1 3))
+				  (mix p1 p2 (/ 1 3))
+				  (/ 1 3))
 			     (point edge (/ 1 3))
 			     color)
 	      (make-instance 'cubic-segment
 			     (point edge (/1 3))           
-			     (mix-point (mix-point (mix-point p0 p1 (/ 1 3))
-						   (mix-point p1 p2 (/ 1 3))
-						   (/ 1 3))
-					(mix-point (mix-point p1 p2 (/ 1 3))
-						   (mix-point p2 p3 (/ 1 3))
-						   (/ 1 3))
-					(/ 2 3))
-			     (mix-point (mix-point (mix-point p0 p1 (/ 2 3))
-						   (mix-point p1 p2 (/ 2 3))
-						   (/ 2 3))
-					(mix-point (mix-point p1 p2 (/ 2 3))
-						   (mix-point p2 p3 (/ 2 3))
-						   (/ 2 3))
-					(/ 1 3))
+			     (mix (mix (mix p0 p1 (/ 1 3))
+				       (mix p1 p2 (/ 1 3))
+				       (/ 1 3))
+				  (mix (mix p1 p2 (/ 1 3))
+				       (mix p2 p3 (/ 1 3))
+				       (/ 1 3))
+				  (/ 2 3))
+			     (mix (mix (mix p0 p1 (/ 2 3))
+				       (mix p1 p2 (/ 2 3))
+				       (/ 2 3))
+				  (mix (mix p1 p2 (/ 2 3))
+				       (mix p2 p3 (/ 2 3))
+				       (/ 2 3))
+				  (/ 1 3))
 			     (point edge (/ 2 3))
 			     color)
 	      (make-instance 'cubic-segment
 			     (point edge (/ 2 3))
-			     (mix-point (mix-point p1 p2 (/ 2 3))
-					(mix-point p2 p3 (/ 2 3))
-					(/ 2 3))
+			     (mix (mix p1 p2 (/ 2 3))
+				  (mix p2 p3 (/ 2 3))
+				  (/ 2 3))
 			     (if (= p2 p3)
 				 p3
-				 (mix-point p2 p3 (/ 2 3)))
+				 (mix p2 p3 (/ 2 3)))
 			     p3
 			     color)))))
 
@@ -110,41 +114,32 @@
   (let* ((points (points edge))
 	 (p0 (aref points 0))
 	 (p1 (aref points 1))
-	 (p12 (mix-point p1 p2 w)))
-    (mix-point (mix-point (mix-point p0 p1 w)
-			  p12
-			  w)
-	       (mix-point p12
-			  (mix-point p2 p3 w)
-			  w)
-	       w)))
+	 (p12 (mix p1 p2 w)))
+    (mix (mix (mix p0 p1 w)
+	      p12
+	      w)
+	 (mix p12
+	      (mix p2 p3 w)
+	      w)
+	 w)))
 
+;; TODO: Check this
 (defmethod move-end-point-cubic ((edge cubic-segment) to)    
   (let ((points (points edge)))
-    (incf (aref points 2)
-	  (- to (aref points 3)))
+    (setf (aref points 2) (v+ (aref points 2)
+			      (v- to (aref points 3))))
     (setf (aref points 3)
 	  to)))
 
-;; Vector2 CubicSegment::direction(double param) const {
-;;     Vector2 tangent = (mix (mix p[1]-p[0] p[2]-p[1] param)
-;;                            (mix p[2]-p[1] p[3]-p[2] param)
-;;                            param)
-;;     if (!tangent) {
-;;         if (param == 0) return p[2]-p[0];
-;;         if (param == 1) return p[3]-p[1];
-;;     }
-;;     return tangent;
-;; }
 (defmethod direction ((edge cubic-segment) param)
   (let* ((points (points edge))
-	 (tangent (mix-point (mix-point (v- (aref points 1) (aref points 0))
-					(v- (aref points 2) (aref points 1))
-					param)
-			     (mix-point (v- (aref points 2) (aref points 1))
-					(v- (aref points 3) (aref points 2))
-					param)
-			     param)))
+	 (tangent (mix (mix (v- (aref points 1) (aref points 0))
+			    (v- (aref points 2) (aref points 1))
+			    param)
+		       (mix (v- (aref points 2) (aref points 1))
+			    (v- (aref points 3) (aref points 2))
+			    param)
+		       param)))
     ;; when not zero vectors
     (when (v-not tangent)
       (when (= param 0) (return-from direction (v- (aref points 2) (aref points 0))))
@@ -193,13 +188,12 @@
 				(multiple-value-bind (l5 b5 r5 t5) (point-bounds (point edge (aref x i)) l4 b4 r4 t4)
 				  (values l5 b5 r5 t5))))))))))))))
 
-;; /// Check how many times a ray from point R extending to the +X direction intersects
-;; /// the given segment:
-;; ///  0 = no intersection or co-linear
-;; /// +1 = for each intersection increasing in the Y axis
-;; /// -1 = for each intersection decreasing in the Y axis
+;; Check how many times a ray from point R extending to the +X direction intersects
+;; the given segment:
+;; 0 = no intersection or co-linear
+;; +1 = for each intersection increasing in the Y axis
+;; -1 = for each intersection decreasing in the Y axis
 (defun cross-cubic (r p0 c0 c1 p1 depth cb)
-  ;; int crossCubic(const Point2& r, const Point2& p0, const Point2& c0, const Point2& c1, const Point2& p1, int depth, EdgeSegment::CrossingCallback* cb) {
   
   (when (or (< (vy2 r) (min (vy2 p0) (min (vy2 c0) (min (vy2 c1) (vy2 p1)))))
 	    (> (vy2 r) (max (vy2 p0) (max (vy2 c0) (max (vy2 c1) (vy2 p1)))))
@@ -230,10 +224,6 @@
   (let ((points (points edge)))
     (cross-cubic r (aref points 0) (aref points 1) (aref points 2) (aref points 3) '(0) cb)))
 
-;; Parameters for iterative search of closest point on a cubic Bezier curve. Increase for higher precision.
-(defconstant +msdfgen-cubic-search-starts+ 4)
-(defconstant +msdfgen-cubic-search-steps+ 4)
-
 (defmethod signed-distance ((edge cubic-segment) origin)
   (error "TODO: cubic-segment:signed-distance")
   (let* ((points (points edge))
@@ -246,7 +236,7 @@
 	 (ep-dir (direction edge 0))
 	 (min-distance (* (non-zero-sign (cross-product ep-dir qa))
 			  (vlength qa)))
-	 (param (- (/ (dot-product qa ep-dir) (dot-product ep-dir ep-dir)))))
+	 (param (- (/ (v. qa ep-dir) (v. ep-dir ep-dir)))))
 
     (setf ep-dir (direction edge 1))
     
@@ -254,9 +244,9 @@
 		       (vunit (v- (aref points 3) origin)))))
       (when (< (abs distance) (abs min-distance))
 	(setf min-distance distance)
-	(setf param (/ (dot-product (v- (v+ origin ep-dir) (aref points 3)))
-		       (dot-product ep-dir ep-dir)))))
-	 
+	(setf param (/ (v. (v- (v+ origin ep-dir) (aref points 3)))
+		       (v. ep-dir ep-dir)))))
+    
     ;; Iterative minimum distance search
     (iter (for i from 0 to +msdfgen-cubic-search-starts+)
 	  (for u = (/ i +msdfgen-cubic-search-starts+))
@@ -275,9 +265,9 @@
 				(v* 3 ab)))
 			(d2 (v+ (v* 6 as u)
 				(v* 6 br))))
-		    (setf u (- (/ (dot-product qpt d1)
-				  (v+ (dot-product d1 d1)
-				      (dot-product qpt d2)))))
+		    (setf u (- (/ (v. qpt d1)
+				  (v+ (v. d1 d1)
+				      (v. qpt d2)))))
 		    (when (or (< u 0) (> u 1))
 		      (finish)))))))
 
@@ -289,11 +279,11 @@
   (if (< param 0.5)
       (return-from signed-distance (values (make-instance 'signed-distance
 							  :distance min-distance
-							  :dot (abs (dot-product (vunit (direction edge 0))
-										 (vunit qa))))
+							  :dot (abs (v. (vunit (direction edge 0))
+									(vunit qa))))
 					   param))
       (return-from signed-distance (values (make-instance 'signed-distance
 							  :distance min-distance
-							  :dot (abs (dot-product (vunit (direction edge 1))
-										 (vunit (v- (aref points 3) origin)))))
+							  :dot (abs (v. (vunit (direction edge 1))
+									(vunit (v- (aref points 3) origin)))))
 					   param))))

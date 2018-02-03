@@ -16,4 +16,7 @@
                  (:file "src/winding-spanner")
                  (:file "src/linear-segment")
                  (:file "src/quadratic-segment")
-                 (:file "src/cubic-segment")))
+                 (:file "src/cubic-segment")
+		 (:file "src/vector")
+		 (:file "src/logic")
+		 (:file "src/solvers")))

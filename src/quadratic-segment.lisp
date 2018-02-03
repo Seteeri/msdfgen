@@ -26,32 +26,27 @@
 	      (v= p1 p2))
       (setf (aref points 1) (v* (v+ p0 p2) 0.5)))))
 
-;; void QuadraticSegment::splitInThirds(EdgeSegment *&part1, EdgeSegment *&part2, EdgeSegment *&part3) const {
-;;     part1 = new QuadraticSegment(p[0], mix(p[0], p[1], 1/3.), point(1/3.), color);
-;;     part2 = new QuadraticSegment(point(1/3.), mix(mix(p[0], p[1], 5/9.), mix(p[1], p[2], 4/9.), .5), point(2/3.), color);
-;;     part3 = new QuadraticSegment(point(2/3.), mix(p[1], p[2], 2/3.), p[2], color);
-;; }
 (defmethod split-in-thirds ((edge quadratic-segment))
   (with-slots (points color) edge
-    (assert (not (eq color nil)))
+    ;; (assert (not (eq color nil)))
     (let* ((p0 (aref points 0))
 	   (p1 (aref points 1))
 	   (p2 (aref points 2))
 	   (e0 (make-instance 'quadratic-segment
 			      :points (make-array 3 :initial-contents (list p0
-									    (mix-point p0 p1 (/ 1 3))
+									    (mix p0 p1 (/ 1 3))
 									    (point edge (/ 1 3))))
 			      :color color))
 	   (e1 (make-instance 'quadratic-segment
 			      :points (make-array 3 :initial-contents (list (point edge (/ 1 3))
-									    (mix-point (mix-point p0 p1 (/ 5 9))
-										       (mix-point p1 p2 (/ 4 9))
-										       0.5)
+									    (mix (mix p0 p1 (/ 5 9))
+										 (mix p1 p2 (/ 4 9))
+										 0.5)
 									    (point edge (/ 2 3))))
 			      :color color))
 	   (e2 (make-instance 'quadratic-segment
 			      :points (make-array 3 :initial-contents (list (point edge (/ 2 3))
-									    (mix-point p1 p2 (/ 2 3))
+									    (mix p1 p2 (/ 2 3))
 									    p2))
 			      :color color)))
 
@@ -67,52 +62,33 @@
 	 (p0 (aref points 0))
 	 (p1 (aref points 1))
 	 (p2 (aref points 2)))
-    (mix-point (mix-point p0 p1 w)
-	       (mix-point p1 p2 w)
-	       w)))
+    (mix (mix p0 p1 w)
+	 (mix p1 p2 w)
+	 w)))
 
 (defmethod move-end-point ((edge quadratic-segment) to)
   (let* ((points (points edge))
 	 (p0 (aref points 0))
 	 (p1 (aref points 1))
 	 (p2 (aref points 2))
-	 (orig-EDir (- p2 p1))
+	 (orig-EDir (v- p2 p1))
 	 (orig-P1 p1))
-    ;; TODO: use vec2
-    (incf (aref p 1) (* (/ (cross-product (- p2 p1)
-					  (- to p2))
-			   (cross-product (- p2 p1)
-					  (- p0 p1)))
-			(- p0 p1)))
+
+    (setf (aref points 1) (v+ (aref points 1) (* (v- p0 p1)
+						 (/ (cross-product (- p2 p1)
+								   (- to p2))
+						    (cross-product (- p2 p1)
+								   (- p0 p1))))))
     (setf (aref points 2) to)
-    (when (< (dot-product orig-EDir (- p2 p1)) 0)
+    (when (< (v. orig-EDir (v- p2 p1)) 0)
       (setf (aref points 1) orig-P1))))
 
-;; Vector2 QuadraticSegment::direction(double param) const {
-;;     return mix(p[1]-p[0], p[2]-p[1], param);
-;; }
 (defmethod direction ((edge quadratic-segment) param)
   (let ((points (points edge)))
     ;; (format t "[q:direction] ~a~%" points)
-    (mix-point (v- (aref points 1) (aref points 0))
-	       (v- (aref points 2) (aref points 1))
-	       param)))
-
-;; void QuadraticSegment::bounds(double &l, double &b, double &r, double &t) const {
-;;     pointBounds(p[0], l, b, r, t);
-;;     pointBounds(p[2], l, b, r, t);
-;;     Vector2 bot = (p[1]-p[0])-(p[2]-p[1]);
-;;     if (bot.x) {
-;;         double param = (p[1].x-p[0].x)/bot.x;
-;;         if (param > 0 && param < 1)
-;;             pointBounds(point(param), l, b, r, t);
-;;     }
-;;     if (bot.y) {
-;;         double param = (p[1].y-p[0].y)/bot.y;
-;;         if (param > 0 && param < 1)
-;;             pointBounds(point(param), l, b, r, t);
-;;     }
-;; }
+    (mix (v- (aref points 1) (aref points 0))
+	 (v- (aref points 2) (aref points 1))
+	 param)))
 
 (defmethod bounds ((edge quadratic-segment) left bottom right top)
   (let ((points (points edge)))
@@ -146,11 +122,11 @@
 		  (setf top top-3)))))))))
   (values left bottom right top))
 
-;; /// Check how many times a ray from point R extending to the +X direction intersects
-;; /// the given segment:
-;; ///  0 = no intersection or co-linear
-;; /// +1 = for each intersection increasing in the Y axis
-;; /// -1 = for each intersection decreasing in the Y axis
+;; Check how many times a ray from point R extending to the +X direction intersects
+;; the given segment:
+;; 0 = no intersection or co-linear
+;; +1 = for each intersection increasing in the Y axis
+;; -1 = for each intersection decreasing in the Y axis
 (defun cross-quad (r p0 c0 p1 depth cb)
 
   (when (or (< (vy2 r) (min (vy2 p0) (min (vy2 c0) (vy2 p1))))
@@ -181,12 +157,12 @@
 	 (qa (v- (aref points 0) origin))
 	 (ab (v- (aref points 1) (aref points 0)))
 	 (br (v- (v+ (aref points 0) (aref points 2)) (aref points 1) (aref points 1)))
-	 (a (dot-product br br))
-	 (b (* 3 (dot-product ab br)))
-	 (c (+ (* 2 (dot-product ab ab)) (dot-product qa br)))
-	 (d (dot-product qa ab))
+	 (a (v. br br))
+	 (b (* 3 (v. ab br)))
+	 (c (+ (* 2 (v. ab ab)) (v. qa br)))
+	 (d (v. qa ab))
 	 (min-distance (* (non-zero-sign (cross-product ab qa)) (vlength qa)))
-	 (param (- (/ (dot-product qa ab) (dot-product ab ab)))))
+	 (param (- (/ (v. qa ab) (v. ab ab)))))
 
     (when *debug-conic-signed-distance*
       (format t "    [quad:sd] qa = ~a~%" qa)
@@ -208,8 +184,8 @@
 	  (format t "    [quad:sd] min-distance/param change 1~%")
 	  (format t "    -----------------~%" qa))
 	(setf min-distance distance)
-	(setf param (/ (dot-product (v- origin (aref points 1)) (v- (aref points 2) (aref points 1)))
-		       (dot-product (v- (aref points 2) (aref points 1)) (v- (aref points 2) (aref points 1)))))))
+	(setf param (/ (v. (v- origin (aref points 1)) (v- (aref points 2) (aref points 1)))
+		       (v. (v- (aref points 2) (aref points 1)) (v- (aref points 2) (aref points 1)))))))
 
     ;; Find solution
     (multiple-value-bind (n solution) (solve-cubic a b c d)
@@ -248,11 +224,11 @@
 	(progn
 	  (return-from signed-distance (values (make-instance 'signed-distance
 							      :distance min-distance
-							      :dot (abs (dot-product (vunit ab) (vunit qa))))
+							      :dot (abs (v. (vunit ab) (vunit qa))))
 					       param)))
 	(progn
 	  (return-from signed-distance (values (make-instance 'signed-distance
 							      :distance min-distance
-							      :dot (abs (dot-product (vunit (v- (aref points 2) (aref points 1)))
+							      :dot (abs (v. (vunit (v- (aref points 2) (aref points 1)))
 										     (vunit (v- (aref points 2) origin)))))
 					       param))))))

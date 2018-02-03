@@ -17,13 +17,8 @@
     :initform +fill-rule-non-zero+
     :documentation "")))
 
-;; /// Fill rules compatible with SVG: https://www.w3.org/TR/SVG/painting.html#FillRuleProperty
-;; enum FillRule {
-;;     None = 0, // Legacy
-;;     NonZero = 1,
-;;     EvenOdd = 2,
-;; };
-(defconstant +fill-rule-none+ 0)
+;; Fill rules compatible with SVG: https://www.w3.org/TR/SVG/painting.html#FillRuleProperty
+(defconstant +fill-rule-none+ 0) ; legacy
 (defconstant +fill-rule-non-zero+ 1)
 (defconstant +fill-rule-even-odd+ 2)
 
@@ -130,9 +125,9 @@
 				    ;; 	    n)
 				    (setf (color (aref edges (mod (+ corner i) m)))
 					  (nth n colors)))))
-			      ;; (iter (for i from 0 below m)
-			      ;; 	    (for ed = (aref edges i))
-			      ;; 	    (format t "~a, ~a~%" ed (color ed)))
+			   ;; (iter (for i from 0 below m)
+			   ;; 	    (for ed = (aref edges i))
+			   ;; 	    (format t "~a, ~a~%" ed (color ed)))
 			   ((>= (length edges) 1)
 			    (let ((parts (make-array 7 :initial-contents (list nil nil nil nil nil nil nil))))
 			      (multiple-value-bind (e0-0 e0-1 e0-2) (split-in-thirds (aref edges 0))
@@ -207,89 +202,10 @@
 			     ;; (format t "[edge-coloring-simple] ~a. final color: ~a~%~%" i color)
 			     (setf (color (aref edges index)) color))))))))))
 
-;; void edgeColoringSimple(Shape &shape, double angleThreshold, unsigned long long seed) {
-;;     double crossThreshold = sin(angleThreshold);
-;;     std::vector<int> corners;
-;;     for (std::vector<Contour>::iterator contour = shape.contours.begin(); contour != shape.contours.end(); ++contour) {
-;;         // Identify corners
-;;         corners.clear();
-;;         if (!contour->edges.empty()) {
-;;             Vector2 prevDirection = (*(contour->edges.end()-1))->direction(1);
-;;             int index = 0;
-;;             for (std::vector<EdgeHolder>::const_iterator edge = contour->edges.begin(); edge != contour->edges.end(); ++edge, ++index) {
-;;                 if (isCorner(prevDirection.normalize(),
-;;                      (*edge)->direction(0).normalize(),
-;;                              crossThreshold))
-;;                     corners.push_back(index);
-;;                 prevDirection = (*edge)->direction(1);
-;;             }
-;;         }
-;;
-;;         // Smooth contour
-;;         if (corners.empty())
-;;             for (std::vector<EdgeHolder>::iterator edge = contour->edges.begin(); edge != contour->edges.end(); ++edge)
-;;                 (*edge)->color = WHITE;
-;;         // "Teardrop" case
-;;         else if (corners.size() == 1) {
-;;             EdgeColor colors[3] = { WHITE, WHITE };
-;;             switchColor(colors[0], seed);
-;;             switchColor(colors[2] = colors[0], seed);
-;;             int corner = corners[0];
-;;             if (contour->edges.size() >= 3) {
-;;                 int m = contour->edges.size();
-;;                 for (int i = 0; i < m; ++i)
-;;                     contour->edges[(corner+i)%m]->color = (colors+1)[int(3+2.875*i/(m-1)-1.4375+.5)-3];
-;;             } else if (contour->edges.size() >= 1) {
-;;                 // Less than three edge segments for three colors => edges must be split
-;;                 EdgeSegment *parts[7] = { };
-;;                 contour->edges[0]->splitInThirds(parts[0+3*corner], parts[1+3*corner], parts[2+3*corner]);
-;;                 if (contour->edges.size() >= 2) {
-;;                     contour->edges[1]->splitInThirds(parts[3-3*corner], parts[4-3*corner], parts[5-3*corner]);
-;;                     parts[0]->color = parts[1]->color = colors[0];
-;;                     parts[2]->color = parts[3]->color = colors[1];
-;;                     parts[4]->color = parts[5]->color = colors[2];
-;;                 } else {
-;;                     parts[0]->color = colors[0];
-;;                     parts[1]->color = colors[1];
-;;                     parts[2]->color = colors[2];
-;;                 }
-;;                 contour->edges.clear();
-;;                 for (int i = 0; parts[i]; ++i)
-;;                     contour->edges.push_back(EdgeHolder(parts[i]));
-;;             }
-;;         }
-;;         // Multiple corners
-;;         else {
-;;             int cornerCount = corners.size();
-;;             int spline = 0;
-;;             int start = corners[0];
-;;             int m = contour->edges.size();
-;;             EdgeColor color = WHITE;
-;;             switchColor(color, seed);
-;;             EdgeColor initialColor = color;
-;;             for (int i = 0; i < m; ++i) {
-;;                 int index = (start+i)%m;
-;;                 if (spline+1 < cornerCount && corners[spline+1] == index) {
-;;                     ++spline;
-;;                     switchColor(color, seed, EdgeColor((spline == cornerCount-1)*initialColor));
-;;                 }
-;;                 contour->edges[index]->color = color;
-;;             }
-;;         }
-;;     }
-;; }
-
-;; }
-
-;; static bool isCorner(const Vector2 &aDir, const Vector2 &bDir, double crossThreshold) {
-;;     return dotProduct(aDir, bDir) <= 0 || fabs(crossProduct(aDir, bDir)) > crossThreshold;
-;; }
 (defun is-corner (a-dir b-dir cross-threshold)
-  (or (< (dot-product a-dir b-dir) 0)
+  (or (< (v. a-dir b-dir) 0)
       (> (abs (cross-product a-dir b-dir)) cross-threshold)))
 
-;; static void switchColor(EdgeColor &color, unsigned long long &seed, EdgeColor banned = BLACK) {
-;; return color and seed
 (defun switch-color (color seed &optional (banned +black+))
   (let ((combined (logand color banned)))
     ;; (format t "  Input: color: ~a, banned: ~a, combo: ~a~%" color banned combined)
