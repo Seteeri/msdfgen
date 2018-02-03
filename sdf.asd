@@ -19,4 +19,5 @@
                  (:file "src/cubic-segment")
 		 (:file "src/vector")
 		 (:file "src/logic")
-		 (:file "src/solvers")))
+		 (:file "src/solvers")
+		 (:file "src/bitmap")))

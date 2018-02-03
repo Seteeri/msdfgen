@@ -4,6 +4,72 @@
 (defconstant +px-green+ 1)
 (defconstant +px-blue+ 2)
 
+(defclass edge-point ()
+  ((min-distance
+    :accessor min-distance
+    :initarg :min-distance
+    :initform (make-instance 'signed-distance)
+    :documentation "SignedDistance")
+   (near-edge
+    :accessor near-edge
+    :initarg :near-edge
+    :initform nil
+    :documentation "EdgeHolder *")
+   (near-param
+    :accessor near-param
+    :initarg :near-param
+    :initform 0.0
+    :documentation "double")))
+
+
+(defun main ()
+
+  ;; (format t "~a~%" (freetype2:check-font-file "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf"))
+  
+  (let ((face (freetype2:new-face "/usr/share/fonts/TTF/ttf-inconsolata-g.ttf")))
+    ;; check face if null
+  
+    ;; printable asii printable characters range including extended
+    (iter (for code from 32 to 255)
+    ;; (let ((code 164))
+	  
+	  (let* ((width 32)
+		 (height 32)
+		 (shape (load-glyph face code))
+		 (bitmap (make-array (* width height) :fill-pointer 0)))
+	    
+	    (normalize (contours shape))
+	    
+	    (edge-coloring-simple shape 3.0)
+	    
+	    (iter (for i from 0 below (* width height))
+		  (vector-push (make-array 3 :fill-pointer 0) bitmap))
+	    
+	    (generate-msdf bitmap
+			   width height
+			   shape
+			   4.0 ; range
+			   (vec2 1.0 1.0) ; scale
+			   (vec2 4.0 4.0)) ; translation
+
+	    ;; Write RGB float output
+	    (when t
+	      (with-open-file (out #p"/home/user/font-gen/sdf/output.txt"
+				   :direction :output
+				   :if-does-not-exist :create
+				   :if-exists :supersede)
+		(iter (for y from (- height 1) downto 0)
+		      (iter (for x from 0 below width)
+			    (let ((px (get-pixel bitmap x y width)))
+			      (write-line (format nil "(~a, ~a) ~5$ ~5$ ~5$" x y (aref px 0) (aref px 1) (aref px 2))
+					  out))))))
+	    
+	    (write-rgb-buffer-to-ppm-file (format nil "/home/user/font-gen/sdf/~a.ppm" code)
+					  bitmap width height)
+	    (format t "Wrote ~a~%" (format nil "/home/user/font-gen/sdf/~a.ppm" code)))))
+  
+  (sb-ext:exit))
+
 (defun pixel-clash (a b threshold)
 
   (when *debug-correct-msdf-error*
@@ -170,26 +236,6 @@
 	    (setf (aref pixel 0) med)
 	    (setf (aref pixel 1) med)
 	    (setf (aref pixel 2) med)))))
-
-(defun get-pixel (output x y w)
-  (aref output (+ (* y w) x)))
-
-(defclass edge-point ()
-  ((min-distance
-    :accessor min-distance
-    :initarg :min-distance
-    :initform (make-instance 'signed-distance)
-    :documentation "SignedDistance")
-   (near-edge
-    :accessor near-edge
-    :initarg :near-edge
-    :initform nil
-    :documentation "EdgeHolder *")
-   (near-param
-    :accessor near-param
-    :initarg :near-param
-    :initform 0.0
-    :documentation "double")))
 
 (defun generate-msdf (output w h shape range scale translate &optional (edge-threshold 1.00000001d0))
   (let* ((contour-count (length (contours shape)))
@@ -410,3 +456,5 @@
 	       (when (<= (abs pseudo-distance) (abs (distance distance)))
 		 (setf (distance distance) pseudo-distance)
 		 (setf (dot distance) 0))))))))
+
+
