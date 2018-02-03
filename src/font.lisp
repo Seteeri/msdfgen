@@ -62,6 +62,7 @@
 		  (vector-push (make-array 3 :fill-pointer 0) bitmap))
 	    
 	    (generate-msdf bitmap
+			   width height
 			   shape
 			   4.0 ; range
 			   (vec2 1.0 1.0) ; scale

@@ -105,11 +105,8 @@
 	  (when pr (format t "5. ~a, ~a, r=~a~%" a-in b-in r)))
 	(return-from pixel-clash r)))))
 
-(defun correct-msdf-error (output threshold)
-  (let ((clashes (make-array 0 :fill-pointer 0 :adjustable t))
-	(w 32)
-	(h 32))
-    
+(defun correct-msdf-error (output w h threshold)
+  (let ((clashes (make-array 0 :fill-pointer 0 :adjustable t)))
     (iter (for y from 0 below h)
 	  (iter (for x from 0 below w)
 		(for pixel = (get-pixel output x y w))
@@ -194,10 +191,8 @@
     :initform 0.0
     :documentation "double")))
 
-(defun generate-msdf (output shape range scale translate &optional (edge-threshold 1.00000001d0))
+(defun generate-msdf (output w h shape range scale translate &optional (edge-threshold 1.00000001d0))
   (let* ((contour-count (length (contours shape)))
-	 (w 32) ;(w (width output))
-	 (h 32) ;(h (height output))
 	 (spanner (make-instance 'winding-spanner))
 	 (contour-sd (make-array contour-count :fill-pointer 0 :adjustable t)))
 
@@ -392,7 +387,7 @@
 		      t))))))
   
   (when (> edge-threshold 0)
-    (correct-msdf-error output (v/ edge-threshold (v* scale range)))))
+    (correct-msdf-error output w h (v/ edge-threshold (v* scale range)))))
 
 
 (defun distance-to-pseudo-distance (edge distance origin param)
