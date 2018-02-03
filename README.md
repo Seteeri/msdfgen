@@ -1,7 +1,9 @@
 SDF
 ===
 
-SDF is a Common Lisp port of [msdfgen](https://github.com/Chlumsky/msdfgen) by Viktor Chlumsky.
+
+SDF is a Common Lisp port of the [msdfgen fork](https://github.com/ckohnert/msdfgen) by ckohnert, 
+originally from [msdfgen](https://github.com/Chlumsky/msdfgen) by Viktor Chlumsky.
 
 It is currently under development and not ready for use. In its current
 state, it is a crude translation which will require refactoring/lispfying
