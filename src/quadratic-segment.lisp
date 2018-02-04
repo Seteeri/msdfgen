@@ -127,7 +127,7 @@
 ;; 0 = no intersection or co-linear
 ;; +1 = for each intersection increasing in the Y axis
 ;; -1 = for each intersection decreasing in the Y axis
-(defun cross-quad (r p0 c0 p1 depth cb)
+(defun cross-quad (r p0 c0 p1 cb)
 
   (when (or (< (vy2 r) (min (vy2 p0) (min (vy2 c0) (vy2 p1))))
 	    (> (vy2 r) (max (vy2 p0) (max (vy2 c0) (vy2 p1))))
@@ -137,20 +137,21 @@
   ;; Recursively subdivide the curve to find the intersection point(s). If we haven't
   ;; converged on a solution by a given depth, just treat it as a linear segment
   ;; and call the approximation good enough.
-  (when (> (first depth) 30)
-    (return-from cross-quad (cross-line r p0 p1 cb)))
+  (when (> *cross-quad-depth* 30)
+      (return-from cross-quad (cross-line r p0 p1 cb)))
 
-  (incf (first depth))
+  (incf *cross-quad-depth*)
   
-  (let* ((mc0 (v* (v+ p0 c0) 0.5))
-	 (mc1 (v* (v+ c0 p1) 0.5))
-	 (mid (v* (v+ mc0 mc1) 0.5)))
-    
-    (+ (cross-quad r p0 mc0 mid depth cb) (cross-quad r mid mc1 p1 depth cb))))
+  (let* ((mc0 (v* (v+ p0 c0) 0.5d0))
+	 (mc1 (v* (v+ c0 p1) 0.5d0))
+	 (mid (v* (v+ mc0 mc1) 0.5d0)))
+
+    (+ (cross-quad r p0 mc0 mid cb) (cross-quad r mid mc1 p1 cb))))
 
 (defmethod cross-points ((edge quadratic-segment) r cb)
   (let ((points (points edge)))
-    (cross-quad r (aref points 0) (aref points 1) (aref points 2) '(0) cb)))
+    (setf *cross-quad-depth* 0)
+    (cross-quad r (aref points 0) (aref points 1) (aref points 2) cb)))
 
 (defmethod signed-distance ((edge quadratic-segment) origin)
   (let* ((points (points edge))

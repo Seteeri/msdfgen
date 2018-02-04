@@ -1,19 +1,5 @@
 (in-package :sdf)
 
-(defparameter *debug-outline-decompose* nil)
-(defparameter *debug-bounds* nil)
-
-(defparameter *debug-conic-signed-distance* nil)
-(defparameter *debug-conic-signed-distance-solve* nil)
-(defparameter *debug-linear-signed-distance* nil)
-
-(defparameter *debug-edge-coloring-simple* nil)
-(defparameter *debug-split-in-thirds* nil)
-(defparameter *debug-advance-to* nil)
-(defparameter *debug-collect-crossings* nil)
-(defparameter *debug-generate-msdf* nil)
-(defparameter *debug-correct-msdf-error* nil)
-
 (defclass ft-context ()
   ((pos
     :accessor pos

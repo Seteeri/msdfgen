@@ -1,8 +1,18 @@
 (in-package :sdf)
 
-(defconstant +px-red+ 0)
-(defconstant +px-green+ 1)
-(defconstant +px-blue+ 2)
+(defparameter *debug-outline-decompose* nil)
+(defparameter *debug-bounds* nil)
+
+(defparameter *debug-conic-signed-distance* nil)
+(defparameter *debug-conic-signed-distance-solve* nil)
+(defparameter *debug-linear-signed-distance* nil)
+
+(defparameter *debug-edge-coloring-simple* nil)
+(defparameter *debug-split-in-thirds* nil)
+(defparameter *debug-advance-to* nil)
+(defparameter *debug-collect-crossings* nil)
+(defparameter *debug-generate-msdf* nil)
+(defparameter *debug-correct-msdf-error* nil)
 
 (defclass edge-point ()
   ((min-distance
@@ -31,7 +41,7 @@
     
     ;; printable asii printable characters range including extended
     (iter (for code from 32 to 255)
-	  ;; (let ((code 164))
+    ;; (let ((code 38))
 	  
 	  (let* ((shape (load-glyph face code))
 		 (width 32)
@@ -40,7 +50,7 @@
 		 (scale (vec2 1.0 1.0))
 		 (translation (vec2 4.0 4.0))
 		 (edge-threshold 1.00000001d0)
-		 (range 4.0))
+		 (range 4.0d0))
 	    
 	    (normalize (contours shape))
 	    
@@ -67,6 +77,8 @@
 	    (write-rgb-buffer-to-ppm-file (format nil "/home/user/font-gen/sdf/~a.ppm" code)
 					  bitmap width height)
 	    (format t "Wrote ~a~%" (format nil "/home/user/font-gen/sdf/~a.ppm" code)))))
+
+  ;; (compare-ppm-files)
   
   (sb-ext:exit))
 
@@ -245,6 +257,7 @@
     (iter (for clash in-vector clashes)
 	  (let* ((pixel (get-pixel output (aref clash 0) (aref clash 1) w))
 		 (med (median (aref pixel 0) (aref pixel 1) (aref pixel 2))))
+	    ;; (format t "[correct-msdf-error] (~a, ~a) ~6$~%" (aref clash 0) (aref clash 1) med)
 	    (setf (aref pixel 0) med)
 	    (setf (aref pixel 1) med)
 	    (setf (aref pixel 2) med)))))
@@ -278,7 +291,7 @@
 	    
 	    (iter (for x from 0 below w)
 		  (for foobar = (if *debug-generate-msdf* (format t "[generate-msdf] (x,y) = (~a,~a)~%" x row) nil))
-		  (for p = (v- (v/ (vec2 (+ x 0.5) (+ y 0.5))
+		  (for p = (v- (v/ (vec2 (+ x 0.5d0) (+ y 0.5d0))
 				   scale)
 			       translate))
 		  (for sr = (make-instance 'edge-point))
@@ -328,18 +341,20 @@
 				;; 	  ii (color edge) (logand (color edge) +blue+)))
 
 				(when (and *debug-generate-msdf* t)
-				  (format t "  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
+				  (format t "  [generateMSDF][e#~a] r dist, dot: ~6$, ~6$~%"
 					  ii
 					  (distance (min-distance r))
 					  (dot (min-distance r)))
-				  (format t "  [generateMSDF][e#~a] g dist, dot: ~4$, ~4$~%"
+				  (format t "  [generateMSDF][e#~a] g dist, dot: ~6$, ~6$~%"
 					  ii
 					  (distance (min-distance g))
 					  (dot (min-distance g)))
-				  (format t "  [generateMSDF][e#~a] b dist, dot: ~4$, ~4$~%~%"
+				  (format t "  [generateMSDF][e#~a] b dist, dot: ~6$, ~6$~%~%"
 					  ii
 					  (distance (min-distance b))
 					  (dot (min-distance b))))
+
+				;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 				
 				(when (and (not (= (logand (color edge) +red+) 0))
 					   (sd< distance (min-distance r)))
@@ -348,6 +363,7 @@
 				  (setf (min-distance r) distance)
 				  (setf (near-edge r) edge)
 				  (setf (near-param r) param))
+
 				(when (and (not (= (logand (color edge) +green+) 0))
 					   (sd< distance (min-distance g)))
 				  (when (and *debug-generate-msdf* t)
@@ -364,22 +380,24 @@
 				  (setf (near-edge b) edge)
 				  (setf (near-param b) param))
 
+				;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+				
 				(when (and *debug-generate-msdf* t)
-				  (format t "~%  [generateMSDF][e#~a] r dist, dot: ~4$, ~4$~%"
+				  (format t "~%  [generateMSDF][e#~a] r dist, dot: ~6$, ~6$~%"
 					  ii
 					  (distance (min-distance r))
 					  (dot (min-distance r)))
-				  (format t "  [generateMSDF][e#~a] g dist, dot: ~4$, ~4$~%"
+				  (format t "  [generateMSDF][e#~a] g dist, dot: ~6$, ~6$~%"
 					  ii
 					  (distance (min-distance g))
 					  (dot (min-distance g)))
-				  (format t "  [generateMSDF][e#~a] b dist, dot: ~4$, ~4$~%~%"
+				  (format t "  [generateMSDF][e#~a] b dist, dot: ~6$, ~6$~%~%"
 					  ii
 					  (distance (min-distance b))
 					  (dot (min-distance b))))
 
 				(when *debug-generate-msdf*
-				  (when (and (= x 5) (= row 6) (= ii 15) (eq nil t))
+				  (when (and (= x 7) (= row 4) (= ii 15) (eq nil t))
 				    (sb-ext:exit)))
 
 				(incf ii)
@@ -410,15 +428,15 @@
                   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		  
 		  (when *debug-generate-msdf*
-		    (format t "  [generateMSDF][(~a,~a)] sr dist, dot: ~4$, ~4$~%"
+		    (format t "  [generateMSDF][(~a,~a)] sr dist, dot: ~6$, ~6$~%"
 			    x row
 			    (distance (min-distance sr))
 			    (dot (min-distance sr)))
-		    (format t "  [generateMSDF][(~a,~a)] sg dist, dot: ~4$, ~4$~%"
+		    (format t "  [generateMSDF][(~a,~a)] sg dist, dot: ~6$, ~6$~%"
 			    x row
 			    (distance (min-distance sg))
 			    (dot (min-distance sg)))
-		    (format t "  [generateMSDF][(~a,~a)] sb dist, dot: ~4$, ~4$~%"
+		    (format t "  [generateMSDF][(~a,~a)] sb dist, dot: ~6$, ~6$~%"
 			    x row
 			    (distance (min-distance sb))
 			    (dot (min-distance sb))))
@@ -427,35 +445,45 @@
 		  
 		  (let* ((dr (distance (min-distance sr)))
 			 (dg (distance (min-distance sg)))
-			 (db (distance (min-distance sb)))
-			 (med (median dr dg db))
-			 (med-sign (if (> (float-sign med) 0d0) 1 -1)))
-
-		    ;; Note: Use signbit() not sign() here because we need to know -0 case.
-		    ;; int medSign = signbit(med) ? -1 : 1;
+			 (db (distance (min-distance sb))))
 
 		    (when *debug-generate-msdf*
-		      (format t "[generateMSDF] d*: ~$, ~$, ~$~%" dr dg db)
-		      (format t "[generateMSDF] med, med-sign: ~$, ~a~%" med med-sign))
+		      (format t "float-sign: ~a, real-sign: ~a, median: ~6$~%"
+			      (float-sign (median dr dg db))
+			      real-sign
+			      (median dr dg db)))
 		    
-		    (when (/= med-sign real-sign)
+		    ;; Note: Use signbit() not sign() here because we need to know -0 case.
+		    ;; int medSign = signbit(med) ? -1 : 1;
+		    (when (/= (if (> (float-sign (median dr dg db)) 0)
+				  1
+				  -1) ; med-sign
+			      real-sign)
 		      (setf dr (- dr))
 		      (setf dg (- dg))
 		      (setf db (- db)))
-
+		    
 		    (let ((r (+ (/ dr range) 0.5d0))
 			  (g (+ (/ dg range) 0.5d0))
 			  (b (+ (/ db range) 0.5d0))
-			  (px (aref bitmap (+ (* row w) x)))) ; content[y*w+x]
+			  (px (get-pixel bitmap x row w)))
+
+		      ;; (when *debug-generate-msdf*
+		      ;; 	(format t "[generateMSDF] d*: ~4$, ~4$, ~4$~%" dr dg db)
+		      ;; 	(format t "[generateMSDF] med, med-sign: ~4$, ~a~%" med med-sign))
+
+		      ;; (format t "~6$~%"  (/ dr range))
+		      
 		      (vector-push r px)
 		      (vector-push g px)
 		      (vector-push b px)
 
-		      (when *debug-generate-msdf*
-			(format t "[generate-msdf] (~a,~a): ~a, ~a, ~a~%" x row r g b))
+		      (when (or *debug-generate-msdf* nil)
+			(format t "[generate-msdf] (~a, ~a): ~6$, ~6$, ~6$~%" x row r g b))
 
+		      
 		      (when nil
-		      	(when (and (= x 5) (= row 5))
+		      	(when (and (= x 14) (= row 5))
 		      	  (sb-ext:exit)))
 		      
 		      t)))))))
