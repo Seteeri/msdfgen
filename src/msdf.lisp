@@ -1,5 +1,9 @@
 (in-package :sdf)
 
+;; TODO
+;; - refactor/cleanup
+;; - implement renderSDF
+
 (defparameter *debug-outline-decompose* nil)
 (defparameter *debug-bounds* nil)
 

@@ -1,8 +1,8 @@
 (in-package :sdf)
 
-;; /// A utility structure for holding winding spans for a single horizontal scanline.
-;; /// First initialize a row by calling collect(), then use advance() to walk the row
-;; /// and determine "inside"-ness as you go.
+;; A utility structure for holding winding spans for a single horizontal scanline.
+;; First initialize a row by calling collect(), then use advance() to walk the row
+;; and determine "inside"-ness as you go.
 (defclass winding-spanner ()
   ((crossings
     :accessor crossings
